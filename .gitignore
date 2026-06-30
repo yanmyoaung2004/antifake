@@ -6,5 +6,9 @@ build/
 *.pyc
 .nyc_output/
 coverage/
-.hardhat/cache/
-.hardhat/artifacts/
+.coverage
+*.dbg.json
+
+# Hardhat build artifacts
+contracts/cache/
+contracts/artifacts/
