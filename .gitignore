@@ -1,4 +1,6 @@
 __pycache__/
+.venv/
+.pytest_cache/
 node_modules/
 dist/
 build/
@@ -8,3 +10,4 @@ build/
 .DS_Store
 *.log
 .expo/
+*.egg-info/
