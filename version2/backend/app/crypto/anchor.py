@@ -70,3 +70,12 @@ def compare_anchors(expected: np.ndarray, actual: np.ndarray) -> dict:
             2,
         ),
     }
+
+
+def simulate_photocopy(anchor: np.ndarray, severity: float = 0.3) -> np.ndarray:
+    blurred = cv2.GaussianBlur(anchor, (3, 3), 0.5)
+    noise = np.random.default_rng(42).integers(
+        0, int(64 * severity), anchor.shape, dtype=np.uint8
+    )
+    tampered = cv2.addWeighted(blurred, 1.0 - severity, noise, severity, 0)
+    return np.clip(tampered, 0, 255).astype(np.uint8)
