@@ -1,0 +1,14 @@
+__pycache__/
+node_modules/
+dist/
+build/
+.env
+*.pyc
+.nyc_output/
+coverage/
+.coverage
+*.dbg.json
+
+# Hardhat build artifacts
+contracts/cache/
+contracts/artifacts/
