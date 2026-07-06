@@ -56,6 +56,14 @@ Scan the QR code with **Expo Go** on your phone.
 
 ---
 
+## Web Interface (No Phone Required)
+
+Open `http://localhost:8000` in any browser while the backend is running.
+
+Drag & drop or tap to select a photo of the crypto-anchor. Click "Verify" to see the result. The page works on desktop and mobile browsers.
+
+---
+
 ## Printable Demo Labels
 
 ```bash

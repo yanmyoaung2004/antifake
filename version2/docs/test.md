@@ -107,13 +107,49 @@ Print `demo_labels/label_*.png` on sticker paper. Attach one to each of two iden
 4. Point at the QR on the **genuine** box → you should see "AUTHENTIC" with green check
 5. Point at the QR on the **counterfeit** box → you should see "COUNTERFEIT" with red X and a heatmap overlay
 
-### Backup: Scan with laptop webcam
+---
 
-Open `http://localhost:8000` in a browser on your laptop (if a web demo page is available).
+## 4. Web Interface (Drag & Drop)
+
+The simplest way to test — no terminal commands needed after starting the server.
+
+```bash
+uv run uvicorn app.main:app --reload
+```
+
+Open `http://localhost:8000` in any browser.
+
+**Steps:**
+1. Click the drop zone or drag an image file onto it
+2. Select a genuine or tampered sample from `sample_images/`
+3. Click **Verify**
+4. Result shows instantly: green "AUTHENTIC" or red "COUNTERFEIT" with metrics and heatmap overlay
+
+This works on desktop and mobile browsers. No Expo Go, no QR scanning, no terminal commands beyond starting the server.
 
 ---
 
-## 4. Troubleshooting
+## 5. Physical Demo (Phone + Printed Boxes)
+
+### Print the labels
+
+```bash
+uv run python tools/printable_labels.py
+```
+
+Print `demo_labels/label_*.png` on sticker paper. Attach one to each of two identical medicine boxes.
+
+### Scan with phone
+
+1. Start both backend and mobile app
+2. Open Expo Go, scan the QR code
+3. Press "Start Scanning"
+4. Point at the QR on the **genuine** box → you should see "AUTHENTIC" with green check
+5. Point at the QR on the **counterfeit** box → you should see "COUNTERFEIT" with red X and a heatmap overlay
+
+---
+
+## 6. Troubleshooting
 
 | Symptom | Fix |
 |---|---|
