@@ -1,8 +1,10 @@
 import base64
+import os
 
 import cv2
 import numpy as np
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.crypto.anchor import generate_anchor, extract_noise, compare_anchors, compute_overlay
@@ -72,3 +74,8 @@ async def verify(body: VerifyRequest):
         return VerifyResponse(
             status="error", confidence=0.0, message=f"Verification failed: {str(e)}"
         )
+
+
+web_dir = os.path.join(os.path.dirname(__file__), "..", "..", "web")
+if os.path.isdir(web_dir):
+    app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")
