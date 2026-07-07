@@ -31,24 +31,24 @@ A failing anchor check returns a **heatmap overlay** showing exactly where the p
 
 ---
 
-## Why SQLite + Hash Chain Instead of Blockchain
+## Custom Blockchain Implementation (Tamper-Proof Audit Trail)
 
-Every scan record is cryptographically chained using SHA256 — same concept as blockchain, zero infrastructure:
+AntiFake implements its own blockchain — not Ethereum, not Hardhat, not any existing platform. Every scan is a block, cryptographically chained to the previous one:
 
-```python
-chain_hash = SHA256(serial | batch_id | lat | lng | timestamp | result | prev_hash)
+```
+block_hash = SHA256(serial | batch_id | lat | lng | timestamp | result | prev_block_hash)
 ```
 
-| | Blockchain | Our Hash Chain |
+| | Traditional Blockchain | AntiFake Custom Blockchain |
 |---|---|---|
-| Linking mechanism | Blocks with `prev_block_hash` | Scans with `prev_hash` |
-| Tamper detection | Recompute + verify chain | Recompute + verify chain |
-| Hash algorithm | SHA256 | SHA256 |
+| Block linking | `prev_block_hash` in each block | `prev_block_hash` in each scan |
+| Consensus | Multiple nodes, PoW/PoS | Single source (manufacturer is trusted) |
+| Tamper detection | Recompute + verify entire chain | Recompute + verify entire chain |
 | Speed | ~12s per block | Instant |
-| Cost | Gas fees | Zero |
-| Infrastructure | Docker, nodes, wallets | One SQLite file |
+| Cost | Gas fees per transaction | Zero |
+| Infrastructure | Nodes, wallets, miners | One SQLite file + SHA256 |
 
-**Why no blockchain:** In pharma anti-counterfeit, the manufacturer IS the trusted party. They made the medicine. If they're corrupt, no blockchain helps — they'd ship counterfeits from their own factory. If they're honest, their database is as trustworthy as any node. The hash chain gives cryptographic immutability (no record can be altered without detection) with zero operational overhead.
+**Why custom:** In pharmaceutical anti-counterfeit, the manufacturer IS the trusted authority. They made the medicine. If they were malicious, no external blockchain could prevent them from shipping counterfeits from their own factory. If they're honest, their own chain is as trustworthy as any distributed ledger. Our custom blockchain provides the same cryptographic immutability — no record can be altered without breaking all subsequent hashes — with zero infrastructure, zero gas, and zero nodes to manage.
 
 ---
 
