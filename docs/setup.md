@@ -47,9 +47,11 @@ Open `http://localhost:8000` in any browser while the backend is running.
 1. Tap or drag a photo of the crypto-anchor area
 2. Optionally adjust the GPS coordinates (defaults to Yangon, Myanmar)
 3. Click **Verify**
-4. Result shows: authenticity badge, metrics, supply chain route on an interactive map, and velocity alerts if the same serial was scanned before
+4. Result shows: authenticity badge, metrics, consumer medicine info, supply chain route on an interactive map, and velocity alerts if the same serial was scanned before
 
-Phones can take a photo directly with the camera capture button. The page works on desktop and mobile browsers.
+Phones can take a photo directly with the camera capture button. The page is a **PWA** — on Android, your browser will prompt to "Add to Home Screen" for a native-app-like experience. On iOS, tap Share → Add to Home Screen.
+
+No personal data is collected or stored. Uploaded images are processed once and discarded.
 
 ---
 

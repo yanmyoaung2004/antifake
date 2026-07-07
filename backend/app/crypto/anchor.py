@@ -14,13 +14,12 @@ def generate_anchor(seed: str) -> np.ndarray:
     return rng.integers(0, 256, (ANCHOR_SIZE, ANCHOR_SIZE), dtype=np.uint8)
 
 
-def extract_noise(image_bgr: np.ndarray) -> np.ndarray:
-    gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
+def extract_noise(image: np.ndarray) -> np.ndarray:
     size = ANCHOR_SIZE
-    h, w = gray.shape
+    h, w = image.shape
     if h < size or w < size:
-        gray = cv2.resize(gray, (size, size), interpolation=cv2.INTER_AREA)
-    return gray[:size, :size]
+        image = cv2.resize(image, (size, size), interpolation=cv2.INTER_AREA)
+    return image[:size, :size]
 
 
 def compute_overlay(actual: np.ndarray, expected: np.ndarray) -> np.ndarray:

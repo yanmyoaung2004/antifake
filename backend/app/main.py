@@ -74,7 +74,7 @@ async def verify(body: VerifyRequest):
 
         raw = base64.b64decode(body.image_base64)
         arr = np.frombuffer(raw, np.uint8)
-        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        img = cv2.imdecode(arr, cv2.IMREAD_GRAYSCALE)
         if img is None:
             return VerifyResponse(
                 status="error", confidence=0.0, message="Could not decode image."

@@ -4,8 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>AntiFake — Verify</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -118,10 +126,14 @@
       <div class="cap">Deviation heatmap — red areas indicate print quality loss</div>
     </div>
     <div id="batchInfo"></div>
+    <div id="medicineInfo" style="display:none; background:#1e293b; border-radius:10px; padding:14px; margin-bottom:14px; text-align:left; font-size:13px;"></div>
     <div id="map"></div>
   </div>
 
   <div class="footer">AntiFake v2 — APICTA 2026</div>
+  <div style="font-size:11px;color:#334155;text-align:center;margin-top:8px;padding:0 16px;line-height:1.5">
+    Uploaded images are processed once and not stored. No personal data is collected or retained.
+  </div>
 </div>
 
 <script>
@@ -257,12 +269,39 @@ function showResult(data, scanLat, scanLng) {
   // Batch info + map
   const bi = data.batch_info;
   batchInfo.innerHTML = '';
+  document.getElementById('medicineInfo').style.display = 'none';
   mapDiv.classList.remove('show');
   if (bi && bi.route && bi.route.length > 0) {
     const rt = bi.route;
     batchInfo.innerHTML = '<div class="batch-header">' + bi.batch_id + ' — ' + bi.region + '</div>'
       + '<div class="batch-region">Minted: ' + (bi.mint_date || 'unknown') + ' • Route: '
       + rt.map(p => p.location_name.split('—')[0].trim()).join(' → ') + '</div>';
+
+    // Medicine info (consumer education)
+    const medInfo = document.getElementById('medicineInfo');
+    medInfo.style.display = 'block';
+    const medData = {
+      'BATCH-A': { name: 'Paracetamol 500mg', manufacturer: 'PharmaCorp Myanmar',用途: 'Fever & Pain Relief', expiry: '2028-05', batch: 'BATCH-A', adverse: 'Report to MMFDA at m m f d a . g o v . m m' },
+      'BATCH-B': { name: 'Amoxicillin 250mg', manufacturer: 'VinPharm Vietnam',用途: 'Antibiotic — Bacterial Infections', expiry: '2028-02', batch: 'BATCH-B', adverse: 'Report to DAV at d a v . g o v . v n' },
+      'BATCH-C': { name: 'Omeprazole 20mg', manufacturer: 'SiamPharm Thailand',用途: 'Acid Reflux Treatment', expiry: '2027-11', batch: 'BATCH-C', adverse: 'Report to Thai FDA at f d a . m o p h . g o . t h' },
+    };
+    const m = medData[bi.batch_id];
+    if (m && ok) {
+      medInfo.innerHTML = '<div style="color:#22c55e;font-weight:600;margin-bottom:6px;font-size:14px;">Medicine Information</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px;">'
+        + '<span style="color:#94a3b8;">Name:</span><span style="color:#e2e8f0;">' + m.name + '</span>'
+        + '<span style="color:#94a3b8;">Manufacturer:</span><span style="color:#e2e8f0;">' + m.manufacturer + '</span>'
+        + '<span style="color:#94a3b8;">Use:</span><span style="color:#e2e8f0;">' + m.用途.split('—')[0] + '</span>'
+        + '<span style="color:#94a3b8;">Expiry:</span><span style="color:#e2e8f0;">' + m.expiry + '</span>'
+        + '<span style="color:#94a3b8;">Batch:</span><span style="color:#e2e8f0;">' + m.batch + '</span>'
+        + '<span style="color:#94a3b8;">Report issues:</span><span style="color:#fbbf24;font-size:11px;">' + m.adverse + '</span>'
+        + '</div>';
+    } else if (m && !ok) {
+      medInfo.innerHTML = '<div style="color:#ef4444;font-weight:600;margin-bottom:4px;font-size:14px;"> Warning — Counterfeit Detected</div>'
+        + '<div style="color:#fbbf24;font-size:12px;">This product claims to be "' + m.name + '" but the crypto-anchor verification failed. Do not consume. Report to local health authorities immediately.</div>';
+    } else {
+      medInfo.style.display = 'none';
+    }
 
     mapDiv.classList.add('show');
     setTimeout(() => {

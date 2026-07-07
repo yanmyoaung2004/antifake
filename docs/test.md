@@ -10,6 +10,24 @@ uv run pytest -v
 
 Expected: **16 passed**
 
+### Accuracy Benchmark
+
+```bash
+cd backend
+.venv\Scripts\activate
+python tools/benchmark.py
+```
+
+Expected output:
+
+```
+Accuracy:         100.0%
+Precision:        100.0%
+Recall:           100.0%
+```
+
+The benchmark generates 50 genuine and 50 counterfeit crypto-anchors and tests all 100 through the API. Currently achieves 100% detection accuracy.
+
 ### Core CV tests
 
 | Test | What it checks |
