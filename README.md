@@ -31,6 +31,27 @@ A failing anchor check returns a **heatmap overlay** showing exactly where the p
 
 ---
 
+## Why SQLite + Hash Chain Instead of Blockchain
+
+Every scan record is cryptographically chained using SHA256 — same concept as blockchain, zero infrastructure:
+
+```python
+chain_hash = SHA256(serial | batch_id | lat | lng | timestamp | result | prev_hash)
+```
+
+| | Blockchain | Our Hash Chain |
+|---|---|---|
+| Linking mechanism | Blocks with `prev_block_hash` | Scans with `prev_hash` |
+| Tamper detection | Recompute + verify chain | Recompute + verify chain |
+| Hash algorithm | SHA256 | SHA256 |
+| Speed | ~12s per block | Instant |
+| Cost | Gas fees | Zero |
+| Infrastructure | Docker, nodes, wallets | One SQLite file |
+
+**Why no blockchain:** In pharma anti-counterfeit, the manufacturer IS the trusted party. They made the medicine. If they're corrupt, no blockchain helps — they'd ship counterfeits from their own factory. If they're honest, their database is as trustworthy as any node. The hash chain gives cryptographic immutability (no record can be altered without detection) with zero operational overhead.
+
+---
+
 ## Features
 
 | Feature | Status |
