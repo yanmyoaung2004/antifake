@@ -10,11 +10,11 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 from app.crypto.anchor import generate_anchor, extract_noise, compare_anchors, compute_overlay
-from app.database import init_db, get_batch, get_route, get_scan_history, record_scan
+from app.database import init_db, get_batch, get_route, get_scan_history, get_scan_count, record_scan
 from app.models import VerifyRequest, VerifyResponse, RoutePoint, BatchInfo, PreviousScan, ScanHistory
 
 VELOCITY_MAX_KMH = 120.0
-DENSITY_THRESHOLD = 5
+DENSITY_THRESHOLD = 2
 
 REGION_BOUNDS = {
     "MYANMAR": {"min_lat": 10.0, "max_lat": 28.5, "min_lng": 92.0, "max_lng": 101.0},
@@ -116,7 +116,7 @@ async def verify(body: VerifyRequest):
 
         # --- Scan history ---
         history = await get_scan_history(body.serial)
-        scan_count = len(history)
+        scan_count = await get_scan_count(body.serial)
         velocity_alert = None
         density_alert = None
         gps_alert = None

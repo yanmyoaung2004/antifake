@@ -68,6 +68,15 @@ async def get_route(batch_id: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def get_scan_count(serial: str) -> int:
+    db = await get_db()
+    row = await db.execute_fetchall(
+        "SELECT COUNT(*) as c FROM scans WHERE serial = ?", (serial,)
+    )
+    await db.close()
+    return row[0]["c"] if row else 0
+
+
 async def get_scan_history(serial: str) -> list[dict]:
     db = await get_db()
     rows = await db.execute_fetchall(
