@@ -1,53 +1,65 @@
 # AntiFake
 
-A phone camera can tell the difference between a real medicine box and a counterfeit one.
+A phone can detect counterfeit medicine without any special hardware — just a batch number and a camera.
 
-AntiFake uses **crypto-anchor** technology — microscopic noise patterns embedded in packaging prints — to detect counterfeits that look identical to the human eye. After verification, it traces the product's supply chain journey from factory to pharmacy on an interactive map.
+AntiFake combines **spatial-temporal anomaly detection** (works with existing barcodes) with optional **crypto-anchor CV verification** (when factories collaborate). Track box movement, detect code replay, and optionally verify microscopic print patterns — all from a web browser.
 
 ---
 
 ## How It Works
 
-Every genuine medicine box gets a **Crypto-Anchor** at the factory — a unique random noise pattern printed next to the QR code. The pattern is deterministic: the backend regenerates it from the batch ID and serial number.
+### Without Crypto-Anchor (Works Today)
 
-When a phone scans the QR and photographs the anchor area, the backend compares the photo against the expected pattern:
+Every medicine box has a batch/lot number. Type it in and the system checks three things:
 
-- **Edge sharpness** — real prints have crisp noise boundaries, photocopies blur them
-- **Histogram correlation** — the noise distribution must match the original
-- **Pixel bleed ratio** — counterfeit copies show smeared edges beyond the threshold
+| Check | What It Detects |
+|---|---|
+| **Velocity** | Same serial scanned in two distant cities too quickly → cloned |
+| **Density** | Same serial scanned too many times → code replay |
+| **GPS** | Medicine scanned outside its distribution region → diversion |
 
-If any metric fails, the box is flagged as counterfeit and a **heatmap overlay** highlights exactly where the print deviated.
+No factory changes needed. Just a barcode or batch number.
+
+### With Crypto-Anchor (Factory Bonus)
+
+If pharmaceutical companies print a **deterministic noise pattern** on packaging, the system adds a fourth layer:
+- **Edge sharpness** — real prints have crisp boundaries, photocopies blur them
+- **Histogram correlation** — noise distribution must match the original
+- **Pixel bleed** — counterfeit copies show smeared edges
+
+A failing anchor check returns a **heatmap overlay** showing exactly where the print deviated.
 
 ---
 
 ## Features
 
-| Feature | What It Does |
+| Feature | Status |
 |---|---|
-| **Crypto-Anchor Verification** | Detects counterfeit prints by analyzing microscopic noise patterns with OpenCV |
-| **Supply Chain Tracing** | Shows the product's route from factory to pharmacy on a Leaflet interactive map |
-| **Velocity Alerts** | Detects cloned serials scanned from distant locations in impossible timeframes (Haversine formula) |
-| **Batch Registry** | Stores batch metadata and route waypoints in SQLite |
-| **Web Interface** | Drag-and-drop image upload with GPS input, works on desktop and mobile browsers |
-| **Mobile App** | Expo app for QR scanning + camera capture |
-| **Printable Demo Labels** | Generate sticker-ready labels with embedded crypto-anchors for physical demos |
+| Velocity detection (Haversine) | Working |
+| Density detection (replay alert) | Working |
+| GPS cross-reference (region check) | Working |
+| Crypto-anchor CV (optional bonus) | Working — 100% synthetic, tuned for real-world |
+| Real browser GPS geolocation | Working — auto-detects phone location |
+| Supply chain map (Leaflet.js) | Working — 3 seeded routes |
+| PWA (install on phone) | Working — manifest + service worker |
+| Demo labels (printable) | Working — genuine + counterfeit |
+| QR scanning (jsQR) | Working — requires HTTPS for camera |
+| Benchmark (100 samples) | 100% accuracy on synthetic images |
+| Robustness test (14 conditions) | Documents real-world performance |
 
 ---
 
 ## Quick Start
 
 ```bash
-# Prerequisites: Python 3.12+, uv installed
-
 cd backend
 uv venv .venv --python 3.12
 .venv\Scripts\activate
 uv pip install -e ".[dev]"
-uv run python seed/seed_data.py
-uv run uvicorn app.main:app --reload
+.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-Open http://localhost:8000 in your browser. Upload a photo or drag a sample image from `backend/sample_images/`. Click **Verify**.
+Open http://localhost:8000. Type any batch ID + serial, tap **Verify**. No image needed.
 
 ---
 
@@ -55,16 +67,10 @@ Open http://localhost:8000 in your browser. Upload a photo or drag a sample imag
 
 ```bash
 cd backend
-uv run pytest -v
-# 16 tests pass in ~2 seconds
+.venv\Scripts\python.exe -m pytest -v          # 16 tests
+.venv\Scripts\python.exe tools/benchmark.py    # 100 samples, 100% accuracy
+.venv\Scripts\python.exe tools/robustness_test.py  # 14 real-world conditions
 ```
-
-| Test Group | Count | What It Verifies |
-|---|---|---|
-| Core CV | 8 | Deterministic anchors, comparison metrics, API roundtrip |
-| Enhanced | 4 | Batch lookup, velocity alerts, counterfeit + batch info |
-| Samples | 2 | Pre-generated genuine/tampered images |
-| API | 2 | Health endpoint, HTTP roundtrip |
 
 ---
 
@@ -73,22 +79,22 @@ uv run pytest -v
 ```
 ├── backend/
 │   ├── app/
-│   │   ├── main.py           # FastAPI — POST /api/v1/verify
-│   │   ├── database.py        # SQLite — batches, routes, scans
-│   │   ├── models.py          # Pydantic request/response models
-│   │   └── crypto/anchor.py   # CV logic (generate, compare, heatmap)
-│   ├── seed/seed_data.py      # Seeds 3 batches with supply chain routes
-│   ├── tests/                 # 16 tests
-│   ├── tools/                 # Label + sample generators
-│   ├── sample_images/         # 6 pre-generated test images
-│   └── demo_labels/           # 2 printable sticker labels
-├── mobile/                    # Expo app (QR scan + camera)
-├── web/index.html             # Drag-and-drop web interface
-├── docs/
-│   ├── setup.md               # Full setup instructions
-│   ├── test.md                # Testing guide
-│   └── architecture.md        # Architecture deep-dive
-└── plan.md                    # Original build plan
+│   │   ├── main.py            # FastAPI — velocity, density, GPS, optional CV
+│   │   ├── database.py         # SQLite — batches, routes, scans
+│   │   ├── models.py           # Pydantic models
+│   │   └── crypto/anchor.py    # CV logic (generate, compare, heatmap)
+│   ├── seed/seed_data.py       # 3 batches with supply chain routes
+│   ├── tests/                  # 16 tests
+│   ├── tools/
+│   │   ├── benchmark.py        # 100% accuracy benchmark
+│   │   ├── robustness_test.py  # 14-condition real-world test
+│   │   ├── generate_samples.py # Test image generator
+│   │   └── printable_labels.py # Demo sticker labels
+│   ├── sample_images/          # 6 test images
+│   └── demo_labels/            # 2 printable labels
+├── web/index.html              # PWA web interface
+├── mobile/                     # Expo app (alternative)
+└── docs/                       # setup, test, architecture guides
 ```
 
 ---
@@ -97,17 +103,10 @@ uv run pytest -v
 
 | Layer | Technology |
 |---|---|
-| Backend | Python + FastAPI + Uvicorn |
+| Backend | Python + FastAPI |
 | Computer Vision | OpenCV + NumPy |
 | Database | SQLite + aiosqlite |
-| Map Visualization | Leaflet.js + OpenStreetMap |
-| Mobile | React Native (Expo) |
-| Web | Vanilla HTML, CSS, JavaScript |
+| Map | Leaflet.js + OpenStreetMap |
+| PWA | Service Worker + manifest.json |
+| QR | jsQR |
 | Testing | pytest + httpx |
-| Linting | ruff |
-
----
-
-## License
-
-AntiFake v2 — APICTA 2026

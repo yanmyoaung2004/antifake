@@ -1,8 +1,12 @@
-# AntiFake v2 — Architecture
+# AntiFake — Architecture
 
 ## Overview
 
-Version 2 is a focused, demo-ready build for the APICTA competition. It combines **crypto-anchor visual verification** with **supply chain tracing** — after verifying authenticity, it shows the product's journey from factory to pharmacy on an interactive map, and detects anomalous movement when the same serial is scanned from two distant locations within a short time.
+AntiFake is a two-layer anti-counterfeit verification system for the APICTA competition.
+
+**Layer 1 — Spatial-Temporal (works today):** Detects suspicious scan behavior using batch/serial from any existing barcode. No factory cooperation needed. Three checks: velocity (impossible travel speed), density (replay attack), GPS (geographic diversion).
+
+**Layer 2 — Crypto-Anchor CV (factory bonus):** Optional visual verification of a deterministic noise pattern printed on packaging. Uses OpenCV to detect microscopic print degradation from photocopying. Returns a heatmap overlay showing exactly where the counterfeit deviates.
 
 **Stack:** Python/FastAPI + OpenCV + SQLite + Leaflet.js
 
@@ -12,18 +16,19 @@ Version 2 is a focused, demo-ready build for the APICTA competition. It combines
 
 | Layer | Tool | Purpose |
 |---|---|---|
-| Backend framework | FastAPI + Uvicorn | Async Python HTTP server |
-| Computer vision | OpenCV + NumPy | Edge detection, histogram, pixel bleed, heatmap |
-| Database | SQLite + aiosqlite | Batch registry, route points, scan history |
-| Map | Leaflet.js + OpenStreetMap | Supply chain route visualization |
-| Mobile | React Native (Expo) | Camera + GPS app |
-| Web | Vanilla HTML/CSS/JS | Drag-drop upload with GPS + map display |
-| Camera | expo-camera (mobile), capture attribute (web) | Photo capture on both platforms |
-| QR | expo-barcode-scanner, qrcode (Python) | Scan (mobile) + generate (labels) |
-| HTTP | axios, httpx | API communication |
+| Backend | FastAPI + Uvicorn | Async HTTP server, 3-check spatial-temporal engine |
+| CV (optional) | OpenCV + NumPy | Edge, histogram, pixel bleed, heatmap overlay |
+| Database | SQLite + aiosqlite | Batch registry, scan history, route points |
+| Map | Leaflet.js + OpenStreetMap | Supply chain route with numbered markers |
+| Mobile PWA | Service Worker + manifest.json | Installable on phone home screen |
+| Camera (PWA) | file input + capture=environment | Phone camera via browser |
+| QR | jsQR | Browser-based QR decoding from video stream |
+| GPS | navigator.geolocation | Real phone location auto-detected |
+| HTTP | httpx (Python), axios (mobile) | API communication |
 | Testing | pytest, httpx | 16 unit + integration tests |
-| Linting | ruff | Code quality |
-| Dependencies | uv | Python package management |
+| Benchmark | tools/benchmark.py | 100 samples, 100% accuracy |
+| Robustness | tools/robustness_test.py | 14 real-world condition tests |
+| Labels | tools/printable_labels.py, qrcode | Printable demo stickers |
 
 ---
 
@@ -259,9 +264,32 @@ The database is auto-created on server startup. Re-run `seed/seed_data.py` to po
 
 ---
 
-## Velocity Check
+## Verification Flow
 
-When a serial is scanned for the second time, the system computes:
+The `POST /api/v1/verify` endpoint runs checks in sequence:
+
+### Layer 1 — Spatial-Temporal (always runs)
+
+1. **Velocity Check:** Computes Haversine distance between current and last scan GPS, divides by time delta. If speed > 120 km/h, returns velocity alert.
+2. **Density Check:** Counts scans per serial via SQLite. If count > 2 (configurable), returns density alert for possible code replay.
+3. **GPS Cross-Reference:** Compares scan location against batch distribution region polygon. If outside region, returns geographic diversion alert.
+
+### Layer 2 — Crypto-Anchor CV (if image provided)
+
+4. **Anchor Generation:** `SHA256(f"{batch_id}:{serial}")` → deterministic 64×64 noise pattern.
+5. **Photo Extraction:** Decoded image is grayscaled and cropped to 64×64 anchor area.
+6. **Comparison:** Three metrics against expected pattern:
+   - Edge sharpness ratio (gradient comparison)
+   - Histogram correlation (32-bin distribution match)
+   - Pixel bleed ratio (pixels above 30-diff threshold)
+7. **Heatmap:** If degraded, pixel-wise difference rendered as COLORMAP_JET overlay.
+
+### Status Determination
+
+- **counterfeit** — anchor check failed (CV layer)
+- **flagged** — spatial-temporal alert triggered (velocity, density, or GPS)
+- **verified** — all checks passed
+- **error** — unexpected exception
 
 ```
 distance = haversine(prev_lat, prev_lng, curr_lat, curr_lng)  ← in km
