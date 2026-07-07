@@ -83,7 +83,7 @@ Output: `demo_labels/label_*.png` — print these on sticker paper and attach to
 
 ---
 
-## Suppy Chain Data
+## Supply Chain Data
 
 The seed data includes realistic pharmaceutical supply chain routes:
 

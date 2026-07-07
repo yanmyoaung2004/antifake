@@ -1,8 +1,9 @@
 # AntiFake
 
-Anti-counterfeit pharmaceutical verification system.
+Anti-counterfeit pharmaceutical verification using crypto-anchor technology.
 
-| Version | Focus | Status |
-|---|---|---|
-| [version1](/version1) | Full-stack implementation (FastAPI, Solidity, Expo, Redis, Docker) | Implemented |
-| [version2](/version2) | APICTA competition — crypto-anchor CV demo | Planned |
+- Crypto-anchor CV detects counterfeit prints by analyzing microscopic noise patterns
+- Supply chain tracing shows product journey from factory to pharmacy on an interactive map
+- Velocity alerts catch cloned serials scanned from distant locations in impossible timeframes
+
+See [version2/docs](version2/docs) for setup and testing.
