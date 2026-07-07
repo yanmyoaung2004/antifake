@@ -17,6 +17,7 @@ from httpx import ASGITransport, AsyncClient
 import asyncio
 
 from app.crypto.anchor import generate_anchor, simulate_photocopy
+from app.database import init_db
 from app.main import app
 
 GENUINE_COUNT = 50
@@ -29,6 +30,7 @@ def _anchor_to_b64(anchor: np.ndarray) -> str:
 
 
 async def run_benchmark():
+    await init_db()
     transport = ASGITransport(app=app)
     results = {"tp": 0, "tn": 0, "fp": 0, "fn": 0, "times": []}
 
@@ -90,4 +92,6 @@ async def run_benchmark():
 
 
 if __name__ == "__main__":
+    if os.path.exists("antifake.db"):
+        os.remove("antifake.db")
     asyncio.run(run_benchmark())

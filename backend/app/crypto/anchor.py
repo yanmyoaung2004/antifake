@@ -4,8 +4,8 @@ import cv2
 import numpy as np
 
 ANCHOR_SIZE = 64
-BLEED_THRESHOLD = 0.25
-HIST_CORR_THRESHOLD = 0.6
+BLEED_THRESHOLD = 0.35
+HIST_CORR_THRESHOLD = 0.3
 
 
 def generate_anchor(seed: str) -> np.ndarray:
@@ -51,7 +51,7 @@ def compare_anchors(expected: np.ndarray, actual: np.ndarray) -> dict:
     bleed_ratio = float(np.mean(diff > 30))
 
     degraded = (
-        edge_diff_ratio > 1.3
+        edge_diff_ratio > 1.5
         or hist_corr < HIST_CORR_THRESHOLD
         or bleed_ratio > BLEED_THRESHOLD
     )

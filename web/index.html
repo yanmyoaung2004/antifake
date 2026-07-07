@@ -105,6 +105,21 @@ body{font-family:-apple-system,system-ui,sans-serif;background:#0b1120;color:#e2
 
 <div class="container">
 
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <div style="flex:1;text-align:center">
+      <div style="background:#1e293b;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:4px">1</div>
+      <div style="font-size:10px;color:#64748b">Enter Batch/Serial</div>
+    </div>
+    <div style="flex:1;text-align:center">
+      <div style="background:#1e293b;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:4px">2</div>
+      <div style="font-size:10px;color:#64748b">Photo (optional)</div>
+    </div>
+    <div style="flex:1;text-align:center">
+      <div style="background:#1e293b;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:4px">3</div>
+      <div style="font-size:10px;color:#64748b">Verify</div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="drop-zone" id="dropZone">
       <div id="dropText">
@@ -119,6 +134,11 @@ body{font-family:-apple-system,system-ui,sans-serif;background:#0b1120;color:#e2
     <div class="inp-row">
       <input type="text" id="batchInput" placeholder="Batch ID" value="BATCH-A">
       <input type="text" id="serialInput" placeholder="Serial" value="001">
+    </div>
+
+    <div style="font-size:11px;color:#64748b;margin-top:6px;min-height:16px;display:flex;align-items:center;gap:6px" id="gpsStatus">
+      <span style="color:#475569" id="gpsIcon">📍</span>
+      <span id="gpsText">Detecting location...</span>
     </div>
 
     <button class="btn btn-sec" id="scanQrBtn">📷 Scan QR code</button>
@@ -192,8 +212,29 @@ const R=$('result'),BD=$('badge'),BIC=$('badgeIcon'),BL=$('badgeLabel');
 const VI=$('vicon'),VT=$('vtitle'),VS=$('vsub'),VC=$('vconf');
 const MG=$('metricsGrid'),BC=$('batchChain'),MI=$('medicineInfo');
 const AC=$('alertsContainer'),OW=$('overlayWrap'),OI=$('overlayImg'),MV=$('map');
+const GS=$('gpsStatus'),GT=$('gpsText'),GI=$('gpsIcon');
 
 let file=null,map=null,qrStream=null,qrTimer=null;
+let scanLat=16.8661,scanLng=96.1951,gpsReady=false;
+
+// Auto-detect GPS on page load
+if(navigator.geolocation){
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      scanLat=pos.coords.latitude;scanLng=pos.coords.longitude;
+      GT.textContent=scanLat.toFixed(4)+', '+scanLng.toFixed(4)+' (live GPS)';
+      GI.textContent='🟢';gpsReady=true;
+    },
+    ()=>{
+      GT.textContent=scanLat.toFixed(4)+', '+scanLng.toFixed(4)+' (default GPS blocked)';
+      GI.textContent='🟠';
+    },
+    {timeout:5000,enableHighAccuracy:true}
+  );
+}else{
+  GT.textContent=scanLat.toFixed(4)+', '+scanLng.toFixed(4)+' (no GPS in browser)';
+  GI.textContent='🟠';
+}
 
 // File upload
 D.addEventListener('click',()=>F.click());
@@ -258,9 +299,9 @@ VB.addEventListener('click',async()=>{
     const b64=file?await new Promise(r=>{const q=new FileReader();q.onload=()=>r(q.result.split(',')[1]);q.readAsDataURL(file)}):'';
     const r2=await fetch('/api/v1/verify',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({batch_id:BI.value||'BATCH-A',serial:SI.value||'001',image_base64:b64,lat:16.8661,lng:96.1951,timestamp:new Date().toISOString()})
+      body:JSON.stringify({batch_id:BI.value||'BATCH-A',serial:SI.value||'001',image_base64:b64,lat:scanLat,lng:scanLng,timestamp:new Date().toISOString()})
     });
-    show(await r2.json(),16.8661,96.1951);
+    show(await r2.json(),scanLat,scanLng);
   }catch(e){show({status:'error',confidence:0,message:'Connection failed',metrics:null,overlay_base64:null,batch_info:null,scan_history:null},0,0)
   }finally{LD.classList.remove('show');VB.disabled=false}
 });
