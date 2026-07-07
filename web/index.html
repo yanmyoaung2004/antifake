@@ -252,7 +252,6 @@ function scanQR(){
 
 // Verify
 VB.addEventListener('click',async()=>{
-  if(!file)return;
   VB.disabled=true;LD.classList.add('show');R.classList.remove('show');
   if(map){map.remove();map=null}
   try{
@@ -277,12 +276,17 @@ function show(d,slat,slng){
   VS.textContent=d.message||'';
   VC.textContent='Confidence: '+Math.round((d.confidence||0)*100)+'%';
 
-  if(d.metrics){
+  if(d.metrics&&d.metrics.edge_diff_ratio!==undefined){
     MG.innerHTML=[['Edge',d.metrics.edge_diff_ratio,d.metrics.edge_diff_ratio<1.3?'#22c55e':'#ef4444'],
       ['Histogram',d.metrics.hist_correlation,d.metrics.hist_correlation>0.6?'#22c55e':'#ef4444'],
       ['Bleed',d.metrics.bleed_ratio,d.metrics.bleed_ratio<0.25?'#22c55e':'#ef4444'],
       ['Confidence',(d.metrics.confidence*100).toFixed(0)+'%',d.metrics.confidence>0.8?'#22c55e':d.metrics.confidence>0.5?'#f59e0b':'#ef4444']]
       .map(([l,v,c])=>'<div class="mc"><div class="mv" style="color:'+c+'">'+v+'</div><div class="ml">'+l+'</div><div class="mb"><div class="f" style="width:'+(typeof v==='string'?100:Math.min(Math.abs(v)*100,100))+'%;background:'+c+'"></div></div></div>').join('');
+  }else if(d.scan_history){
+    MG.innerHTML='<div class="mc"><div class="mv" style="color:#22c55e">'+Math.round(d.confidence*100)+'%</div><div class="ml">Confidence</div></div>'
+      +'<div class="mc"><div class="mv" style="color:#94a3b8">'+d.scan_history.scan_count+'</div><div class="ml">Scans</div></div>'
+      +'<div class="mc"><div class="mv" style="color:#22c55e">'+((d.scan_history.velocity_alert||d.scan_history.gps_alert||d.scan_history.density_alert)?'Alert':'OK')+'</div><div class="ml">Spatial</div></div>'
+      +'<div class="mc"><div class="mv" style="color:#22c55e">'+d.status.toUpperCase()+'</div><div class="ml">Status</div></div>';
   }
 
   if(d.overlay_base64){OW.style.display='block';OI.src='data:image/png;base64,'+d.overlay_base64}else OW.style.display='none';

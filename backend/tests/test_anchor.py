@@ -1,4 +1,5 @@
 import base64
+import os
 
 import cv2
 import numpy as np
@@ -7,6 +8,15 @@ import pytest
 
 from app.crypto.anchor import generate_anchor, compare_anchors, extract_noise
 from app.main import app
+from app.database import init_db
+
+
+@pytest.fixture(autouse=True)
+async def setup_db():
+    if os.path.exists("antifake.db"):
+        os.remove("antifake.db")
+    await init_db()
+    yield
 
 
 class TestGenerateAnchor:
