@@ -337,6 +337,12 @@ function show(d,slat,slng){
   if(sh&&sh.velocity_alert)alertHtml+='<div class="alert"><span class="ai">⚡</span><span>'+sh.velocity_alert+'</span></div>';
   if(sh&&sh.density_alert)alertHtml+='<div class="alert"><span class="ai">🔁</span><span>'+sh.density_alert+'</span></div>';
   if(sh&&sh.gps_alert)alertHtml+='<div class="alert"><span class="ai">📍</span><span>'+sh.gps_alert+'</span></div>';
+  if(sh&&sh.chain_message!==undefined){
+    const intact=sh.chain_intact!==false;
+    alertHtml+='<div class="alert" style="background:linear-gradient(135deg,'+(intact?'#052e16,#064e3b':'#450a0a,#7f1d1d')+');border:1px solid '+(intact?'rgba(34,197,94,.15)':'rgba(239,68,68,.15)')+'">'
+      +'<span class="ai">'+(intact?'🔗':'🔓')+'</span>'
+      +'<span style="color:'+(intact?'#22c55e':'#fbbf24')+'">'+sh.chain_message+'</span></div>';
+  }
   AC.innerHTML=alertHtml;
 
   const bi=d.batch_info;MI.style.display='none';MV.classList.remove('show');

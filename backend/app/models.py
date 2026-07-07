@@ -28,6 +28,8 @@ class ScanHistory(BaseModel):
     density_alert: str | None = None
     gps_alert: str | None = None
     previous_scan: PreviousScan | None = None
+    chain_intact: bool | None = None
+    chain_message: str | None = None
 
 
 class VerifyRequest(BaseModel):

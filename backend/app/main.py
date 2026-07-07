@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 from app.crypto.anchor import generate_anchor, extract_noise, compare_anchors, compute_overlay
-from app.database import init_db, get_batch, get_route, get_scan_history, get_scan_count, record_scan
+from app.database import init_db, get_batch, get_route, get_scan_history, get_scan_count, record_scan, verify_chain
 from app.models import VerifyRequest, VerifyResponse, RoutePoint, BatchInfo, PreviousScan, ScanHistory
 
 VELOCITY_MAX_KMH = 120.0
@@ -175,6 +175,10 @@ async def verify(body: VerifyRequest):
 
         await record_scan(serial=body.serial, batch_id=body.batch_id, lat=body.lat, lng=body.lng, timestamp=ts, result=status)
 
+        chain = await verify_chain(body.serial)
+        scan_history.chain_intact = chain.get("intact")
+        scan_history.chain_message = chain.get("message")
+
         return VerifyResponse(
             status=status,
             confidence=confidence,
@@ -189,6 +193,14 @@ async def verify(body: VerifyRequest):
         return VerifyResponse(
             status="error", confidence=0.0, message=f"Verification failed: {str(e)}"
         )
+
+
+@app.get("/api/v1/chain/verify")
+async def chain_verify(serial: str = ""):
+    if not serial:
+        return {"intact": True, "message": "No serial provided"}
+    result = await verify_chain(serial)
+    return result
 
 
 web_dir = os.path.join(os.path.dirname(__file__), "..", "..", "web")

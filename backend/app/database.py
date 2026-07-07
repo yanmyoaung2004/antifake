@@ -37,12 +37,17 @@ async def init_db():
             lng REAL NOT NULL,
             timestamp TEXT NOT NULL,
             result TEXT NOT NULL,
-            scanned_at TEXT DEFAULT (datetime('now'))
+            scanned_at TEXT DEFAULT (datetime('now')),
+            chain_hash TEXT DEFAULT ''
         );
 
         CREATE INDEX IF NOT EXISTS idx_scans_serial ON scans(serial);
         CREATE INDEX IF NOT EXISTS idx_route_points_batch ON route_points(batch_id);
     """)
+    try:
+        await db.execute("ALTER TABLE scans ADD COLUMN chain_hash TEXT DEFAULT ''")
+    except Exception:
+        pass
     await db.commit()
     await db.close()
 
@@ -90,10 +95,52 @@ async def get_scan_history(serial: str) -> list[dict]:
 async def record_scan(serial: str, batch_id: str, lat: float, lng: float,
                       timestamp: str, result: str):
     db = await get_db()
+
+    last = await db.execute_fetchall(
+        "SELECT chain_hash FROM scans WHERE serial = ? ORDER BY id DESC LIMIT 1",
+        (serial,),
+    )
+    prev_hash = last[0]["chain_hash"] if last else "0" * 64
+
+    import hashlib
+    raw = f"{serial}|{batch_id}|{lat}|{lng}|{timestamp}|{result}|{prev_hash}"
+    chain_hash = hashlib.sha256(raw.encode()).hexdigest()
+
     await db.execute(
-        "INSERT INTO scans (serial, batch_id, lat, lng, timestamp, result) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (serial, batch_id, lat, lng, timestamp, result),
+        "INSERT INTO scans (serial, batch_id, lat, lng, timestamp, result, chain_hash) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (serial, batch_id, lat, lng, timestamp, result, chain_hash),
     )
     await db.commit()
     await db.close()
+
+
+async def verify_chain(serial: str) -> dict:
+    db = await get_db()
+    rows = await db.execute_fetchall(
+        "SELECT * FROM scans WHERE serial = ? AND chain_hash != '' ORDER BY id ASC",
+        (serial,),
+    )
+    await db.close()
+    if not rows:
+        return {"intact": True, "total": 0, "message": "No scans to verify"}
+
+    prev = "0" * 64
+    for i, row in enumerate(rows):
+        import hashlib
+        raw = f"{row['serial']}|{row['batch_id']}|{row['lat']}|{row['lng']}|{row['timestamp']}|{row['result']}|{prev}"
+        computed = hashlib.sha256(raw.encode()).hexdigest()
+        if computed != row["chain_hash"]:
+            return {
+                "intact": False,
+                "total": len(rows),
+                "broken_at": i + 1,
+                "message": f"Chain broken at record {i + 1}. Data has been tampered with.",
+            }
+        prev = computed
+
+    return {
+        "intact": True,
+        "total": len(rows),
+        "message": f"Chain intact — {len(rows)} records verified.",
+    }
