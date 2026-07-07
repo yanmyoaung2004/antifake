@@ -2,150 +2,95 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>AntiFake — Verify</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>AntiFake - Verify</title>
 <link rel="manifest" href="/manifest.json">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%233b82f6'/><text x='16' y='24' font-size='22' text-anchor='middle' fill='%23fff'>A</text></svg>">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{
-  font-family:-apple-system,system-ui,sans-serif;
-  background:#0b1120;color:#e2e8f0;min-height:100vh;
-}
-.header{
-  background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);
-  padding:20px 24px;border-bottom:1px solid #1e293b;
-  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
-}
-.header h1{
-  font-size:22px;font-weight:700;
-  background:linear-gradient(135deg,#60a5fa,#a78bfa);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-  background-clip:text;letter-spacing:-0.5px;
-}
+body{font-family:-apple-system,system-ui,sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh}
+.header{background:linear-gradient(135deg,#0f172a,#1e293b);padding:20px 24px;border-bottom:1px solid #1e293b;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.header h1{font-size:22px;font-weight:700;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-.5px}
 .header .sub{font-size:12px;color:#64748b}
-.layout{max-width:1100px;margin:0 auto;padding:16px;display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+.layout{max-width:1100px;margin:0 auto;padding:16px;display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
 @media(max-width:800px){.layout{grid-template-columns:1fr}}
-
-/* Left column — controls */
-.ctrl-card{background:#131c31;border:1px solid #1e293b;border-radius:14px;padding:16px;margin-bottom:12px}
-.drop-zone{
-  border:2px dashed #1e293b;border-radius:12px;padding:28px 16px;
-  cursor:pointer;transition:.3s;text-align:center;
-}
+.card{background:#131c31;border:1px solid #1e293b;border-radius:14px;padding:16px;margin-bottom:12px}
+.drop-zone{border:2px dashed #1e293b;border-radius:12px;padding:32px 16px;cursor:pointer;transition:.3s;text-align:center}
 .drop-zone:hover,.drop-zone.dragover{border-color:#3b82f6;background:rgba(59,130,246,.06)}
 .drop-zone.has-image{border-color:#22c55e;padding:4px;background:rgba(34,197,94,.04)}
-.drop-zone-text .cam{
-  width:44px;height:44px;margin:0 auto 8px;
-  background:linear-gradient(135deg,#1e293b,#334155);
-  border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;
-}
-.drop-zone-text{font-size:13px;color:#94a3b8}
-.drop-zone-text .hint{font-size:11px;color:#475569;margin-top:2px}
+.drop-zone .icon{width:44px;height:44px;margin:0 auto 8px;background:linear-gradient(135deg,#1e293b,#334155);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px}
+.drop-zone .txt{font-size:13px;color:#94a3b8}
+.drop-zone .hint{font-size:11px;color:#475569;margin-top:2px}
 .drop-zone input{display:none}
 .preview{max-width:100%;max-height:120px;border-radius:8px;display:none;margin:0 auto}
 .preview.show{display:block}
-.gps-row{display:flex;gap:6px;margin-top:10px}
-.gps-row input{
-  flex:1;background:#0b1120;border:1px solid #1e293b;border-radius:8px;
-  padding:8px 10px;color:#e2e8f0;font-size:12px;outline:none;transition:.2s;
-}
-.gps-row input:focus{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.15)}
-.btn{
-  display:block;width:100%;margin-top:10px;
-  background:linear-gradient(135deg,#2563eb,#7c3aed);
-  color:#fff;border:none;padding:12px;border-radius:10px;
-  font-size:15px;font-weight:600;cursor:pointer;transition:.3s;
-}
+.gps-row{display:none;gap:4px;margin-top:6px}
+.gps-row.show{display:flex}
+.gps-row input{flex:1;background:#0b1120;border:1px solid #1e293b;border-radius:6px;padding:5px 8px;color:#e2e8f0;font-size:11px;outline:none;min-width:0}
+.gps-row input:focus{border-color:#3b82f6}
+.advanced-toggle{font-size:10px;color:#475569;cursor:pointer;margin-top:6px;user-select:none;display:inline-block}
+.btn{display:block;width:100%;margin-top:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;padding:12px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:.3s}
 .btn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(37,99,235,.3)}
 .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
-.loading{display:none;align-items:center;justify-content:center;gap:10px;padding:16px 0}
+.loading{display:none;align-items:center;justify-content:center;gap:10px;padding:20px 0}
 .loading.show{display:flex}
 .spinner{width:20px;height:20px;border:3px solid #1e293b;border-top:3px solid #3b82f6;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{color:#64748b;font-size:13px}
-
-/* Right column — results */
 .result{display:none;animation:fadeIn .4s ease}
 .result.show{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-
-.status-row{display:flex;gap:12px;margin-bottom:10px;align-items:stretch}
-.status-badge{
-  flex:0 0 100px;border-radius:12px;padding:14px 10px;text-align:center;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-}
-.status-badge.verified{background:linear-gradient(135deg,#052e16,#064e3b);border:1px solid rgba(34,197,94,.2)}
-.status-badge.counterfeit{background:linear-gradient(135deg,#450a0a,#7f1d1d);border:1px solid rgba(239,68,68,.2)}
-.status-badge.error{background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid rgba(245,158,11,.2)}
-.status-badge .icon{font-size:28px}
-.status-badge.verified .icon{animation:pulse 2s infinite}
+.top-row{display:flex;gap:10px;margin-bottom:10px;align-items:stretch}
+.badge{flex:0 0 90px;border-radius:12px;padding:12px 8px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.badge.verified{background:linear-gradient(135deg,#052e16,#064e3b);border:1px solid rgba(34,197,94,.2)}
+.badge.counterfeit{background:linear-gradient(135deg,#450a0a,#7f1d1d);border:1px solid rgba(239,68,68,.2)}
+.badge.error{background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid rgba(245,158,11,.2)}
+.badge .bi{font-size:26px}
+.badge.verified .bi{animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
-.status-badge .label{font-size:13px;font-weight:700;margin-top:2px}
-.status-badge.verified .label{color:#22c55e}
-.status-badge.counterfeit .label{color:#ef4444}
-.status-badge.error .label{color:#f59e0b}
-
-.verdict-card{flex:1;background:#131c31;border:1px solid #1e293b;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px}
-.verdict-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.verdict-icon.verified{background:rgba(34,197,94,.15);color:#22c55e}
-.verdict-icon.counterfeit{background:rgba(239,68,68,.15);color:#ef4444}
-.verdict-icon.error{background:rgba(245,158,11,.15);color:#f59e0b}
-.verdict-title{font-size:14px;font-weight:600}
-.verdict-title.verified{color:#22c55e}
-.verdict-title.counterfeit{color:#ef4444}
-.verdict-title.error{color:#f59e0b}
-.verdict-sub{color:#64748b;font-size:11px;margin-top:1px}
-.verdict-conf{color:#475569;font-size:11px;margin-top:0}
-
-.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-@media(max-width:600px){.results-grid{grid-template-columns:1fr}}
-
-.res-card{background:#131c31;border:1px solid #1e293b;border-radius:12px;padding:12px}
-.res-card .sect-title{font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
-
-.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.metric-card{background:#0b1120;border-radius:8px;padding:8px 10px;text-align:center}
-.metric-card .val{font-size:15px;font-weight:700;font-family:monospace}
-.metric-card .lbl{font-size:9px;color:#64748b;margin-top:1px;text-transform:uppercase;letter-spacing:.3px}
-.metric-bar{height:2px;border-radius:2px;margin-top:4px;background:#1e293b;overflow:hidden}
-.metric-bar .fill{height:100%;border-radius:2px;transition:width .6s ease}
-
-.alert{
-  background:linear-gradient(135deg,#451a03,#78350f);
-  border:1px solid rgba(251,191,36,.15);border-radius:10px;
-  padding:10px 12px;margin-bottom:10px;font-size:12px;color:#fbbf24;
-  display:flex;gap:8px;align-items:flex-start;
-}
-.alert .a-icon{flex-shrink:0;font-size:14px}
-
-.med-grid{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px}
-.med-grid .ml{color:#64748b}
-.med-grid .mv{color:#e2e8f0}
-.med-grid .mv.warn{color:#fbbf24}
-
-.route-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-.route-chips span{background:#0b1120;padding:3px 8px;border-radius:5px;font-size:10px;color:#94a3b8}
-
-.overlay-wrap{margin-bottom:10px;text-align:center}
-.overlay-wrap img{max-width:100%;max-height:140px;border-radius:8px;border:2px solid #1e293b}
-.overlay-wrap .cap{color:#475569;font-size:10px;margin-top:2px}
-
-#map{height:220px;border-radius:12px;display:none;border:2px solid #1e293b;overflow:hidden;margin-top:0}
+.badge .bl{font-size:12px;font-weight:700;margin-top:2px}
+.badge.verified .bl{color:#22c55e}
+.badge.counterfeit .bl{color:#ef4444}
+.badge.error .bl{color:#f59e0b}
+.vcard{flex:1;background:#131c31;border:1px solid #1e293b;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px}
+.vicon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.vicon.verified{background:rgba(34,197,94,.15);color:#22c55e}
+.vicon.counterfeit{background:rgba(239,68,68,.15);color:#ef4444}
+.vicon.error{background:rgba(245,158,11,.15);color:#f59e0b}
+.vtitle{font-size:13px;font-weight:600}
+.vtitle.verified{color:#22c55e}
+.vtitle.counterfeit{color:#ef4444}
+.vtitle.error{color:#f59e0b}
+.vsub{color:#64748b;font-size:11px;margin-top:1px}
+.vconf{color:#475569;font-size:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+.rc{background:#131c31;border:1px solid #1e293b;border-radius:12px;padding:12px}
+.rc .st{font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.mg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mc{background:#0b1120;border-radius:8px;padding:8px 10px;text-align:center}
+.mc .mv{font-size:14px;font-weight:700;font-family:monospace}
+.mc .ml{font-size:9px;color:#64748b;margin-top:1px;text-transform:uppercase;letter-spacing:.3px}
+.mb{height:2px;border-radius:2px;margin-top:4px;background:#1e293b;overflow:hidden}
+.mb .f{height:100%;border-radius:2px;transition:width .6s ease}
+.alert{background:linear-gradient(135deg,#451a03,#78350f);border:1px solid rgba(251,191,36,.15);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#fbbf24;display:flex;gap:8px;align-items:flex-start}
+.alert .ai{flex-shrink:0;font-size:14px}
+.med-g{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px}
+.med-g .ml{color:#64748b}
+.med-g .mv{color:#e2e8f0}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.chips span{background:#0b1120;padding:3px 8px;border-radius:5px;font-size:10px;color:#94a3b8}
+.ow{margin-bottom:10px;text-align:center}
+.ow img{max-width:100%;max-height:140px;border-radius:8px;border:2px solid #1e293b}
+.ow .cap{color:#475569;font-size:10px;margin-top:2px}
+#map{height:200px;border-radius:12px;display:none;border:2px solid #1e293b;overflow:hidden}
 #map.show{display:block}
-
-.footer{text-align:center;padding:16px;max-width:1100px;margin:0 auto}
-.footer .brand{font-size:11px;color:#334155}
-.footer .privacy{font-size:10px;color:#1e293b;margin-top:2px}
-
-@media(max-width:800px){
-  .header{padding:16px;flex-direction:column;text-align:center}
-  .layout{padding:12px}
-}
+.ft{text-align:center;padding:16px;max-width:1100px;margin:0 auto}
+.ft .b{font-size:11px;color:#334155}
 </style>
 </head>
 <body>
@@ -155,245 +100,226 @@ body{
     <h1>AntiFake</h1>
     <span class="sub">Crypto-Anchor Verification</span>
   </div>
-  <span class="sub" style="font-size:11px;color:#475569">Upload a photo → verify authenticity → view supply chain</span>
+  <span class="sub" style="font-size:11px;color:#475569">Upload a photo to verify authenticity</span>
 </div>
 
 <div class="layout">
 
-  <!-- LEFT COLUMN: Controls -->
-  <div>
-    <div class="ctrl-card">
-      <div class="drop-zone" id="dropZone">
-        <div class="drop-zone-text" id="dropText">
-          <div class="cam">📷</div>
-          <div>Select photo</div>
+<div>
+  <div class="card">
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-zone" id="innerDrop" style="border:none;padding:0;cursor:pointer">
+        <div id="dropText">
+          <div class="icon">📷</div>
+          <div class="txt">Select a photo of the crypto-anchor</div>
           <div class="hint">or drag &amp; drop</div>
         </div>
         <img class="preview" id="preview" alt="">
         <input type="file" id="fileInput" accept="image/*" capture="environment">
       </div>
-      <div class="gps-row">
-        <input type="number" id="latInput" placeholder="Lat" step="any" value="16.8661">
-        <input type="number" id="lngInput" placeholder="Lng" step="any" value="96.1951">
-      </div>
-      <button class="btn" id="verifyBtn" disabled>Verify</button>
-      <div class="loading" id="loading">
-        <div class="spinner"></div>
-        <span class="loading-text">Analyzing...</span>
-      </div>
     </div>
-    <div class="ctrl-card" style="padding:10px 14px;font-size:11px;color:#475569;line-height:1.5">
-      Images processed once, not stored. No personal data collected.
+
+    <div class="advanced-toggle" id="advToggle">GPS coordinates (optional) ▼</div>
+    <div class="gps-row" id="gpsRow">
+      <input type="number" id="latInput" placeholder="Latitude" step="any" value="16.8661">
+      <input type="number" id="lngInput" placeholder="Longitude" step="any" value="96.1951">
+    </div>
+
+    <button class="btn" id="verifyBtn" disabled>Verify</button>
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <span class="loading-text">Analyzing...</span>
     </div>
   </div>
 
-  <!-- RIGHT COLUMN: Results -->
-  <div>
-    <div class="result" id="result">
-
-      <!-- Status row -->
-      <div class="status-row">
-        <div class="status-badge" id="badge">
-          <span class="icon" id="badgeIcon"></span>
-          <div class="label" id="badgeLabel"></div>
-        </div>
-        <div class="verdict-card">
-          <div class="verdict-icon" id="verdictIcon"></div>
-          <div>
-            <div class="verdict-title" id="verdictTitle"></div>
-            <div class="verdict-sub" id="verdictSub"></div>
-            <div class="verdict-conf" id="verdictConf"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="alert" id="velocityAlert" style="display:none">
-        <span class="a-icon">⚠️</span>
-        <span id="velocityText"></span>
-      </div>
-
-      <!-- Results grid: left = metrics, right = batch + medicine -->
-      <div class="results-grid">
-        <div class="res-card">
-          <div class="sect-title">Metrics</div>
-          <div class="metrics-grid" id="metricsGrid">
-            <div class="metric-card"><div class="val" style="color:#64748b">—</div><div class="lbl">Edge</div></div>
-            <div class="metric-card"><div class="val" style="color:#64748b">—</div><div class="lbl">Histogram</div></div>
-            <div class="metric-card"><div class="val" style="color:#64748b">—</div><div class="lbl">Bleed</div></div>
-            <div class="metric-card"><div class="val" style="color:#64748b">—</div><div class="lbl">Confidence</div></div>
-          </div>
-        </div>
-
-        <div class="res-card">
-          <div class="sect-title">Supply Chain</div>
-          <div id="batchChain"><div style="color:#64748b;font-size:11px">Awaiting scan...</div></div>
-        </div>
-      </div>
-
-      <div id="medicineInfo" style="display:none"></div>
-
-      <div class="overlay-wrap" id="overlayWrap" style="display:none">
-        <img id="overlayImg" alt="heatmap">
-        <div class="cap">Deviation heatmap — red indicates print quality loss</div>
-      </div>
-
-    </div>
-
-    <!-- Map — below results, full width -->
-    <div id="map"></div>
-
+  <div class="card" style="padding:10px 14px;font-size:11px;color:#475569;line-height:1.5">
+    Image processed once, not stored.
   </div>
 </div>
 
-<div class="footer">
-  <div class="brand">AntiFake — APICTA 2026</div>
+<div>
+  <div class="result" id="result">
+    <div class="top-row">
+      <div class="badge" id="badge">
+        <div class="bi" id="badgeIcon"></div>
+        <div class="bl" id="badgeLabel"></div>
+      </div>
+      <div class="vcard">
+        <div class="vicon" id="vicon"></div>
+        <div>
+          <div class="vtitle" id="vtitle"></div>
+          <div class="vsub" id="vsub"></div>
+          <div class="vconf" id="vconf"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert" id="velocityAlert" style="display:none">
+      <span class="ai">⚠️</span>
+      <span id="velocityText"></span>
+    </div>
+
+    <div class="grid2">
+      <div class="rc">
+        <div class="st">Metrics</div>
+        <div class="mg" id="metricsGrid">
+          <div class="mc"><div class="mv" style="color:#64748b">—</div><div class="ml">Edge</div></div>
+          <div class="mc"><div class="mv" style="color:#64748b">—</div><div class="ml">Histogram</div></div>
+          <div class="mc"><div class="mv" style="color:#64748b">—</div><div class="ml">Bleed</div></div>
+          <div class="mc"><div class="mv" style="color:#64748b">—</div><div class="ml">Confidence</div></div>
+        </div>
+      </div>
+      <div class="rc">
+        <div class="st">Supply Chain</div>
+        <div id="batchChain"><div style="color:#64748b;font-size:11px">Awaiting scan...</div></div>
+      </div>
+    </div>
+
+    <div id="medicineInfo" style="display:none"></div>
+    <div class="ow" id="overlayWrap" style="display:none">
+      <img id="overlayImg" alt="heatmap">
+      <div class="cap">Deviation heatmap — red = print quality loss</div>
+    </div>
+  </div>
+
+  <div id="map"></div>
 </div>
+
+</div>
+
+<div class="ft"><div class="b">AntiFake — APICTA 2026</div></div>
 
 <script>
-const $ = id => document.getElementById(id);
-const D = $('dropZone'), F = $('fileInput'), P = $('preview'), T = $('dropText');
-const LAT = $('latInput'), LNG = $('lngInput'), VB = $('verifyBtn'), LD = $('loading');
-const R = $('result'), BD = $('badge'), BI = $('badgeIcon'), BL = $('badgeLabel');
-const VI = $('verdictIcon'), VT = $('verdictTitle'), VS = $('verdictSub'), VC = $('verdictConf');
-const VA = $('velocityAlert'), VX = $('velocityText');
-const MG = $('metricsGrid'), BC = $('batchChain'), MI = $('medicineInfo');
-const OW = $('overlayWrap'), OI = $('overlayImg'), MV = $('map');
+const $=id=>document.getElementById(id);
+const D=$('dropZone'),F=$('fileInput'),P=$('preview'),T=$('dropText');
+const LAT=$('latInput'),LNG=$('lngInput'),VB=$('verifyBtn'),LD=$('loading');
+const R=$('result'),BD=$('badge'),BI=$('badgeIcon'),BL=$('badgeLabel');
+const VI=$('vicon'),VT=$('vtitle'),VS=$('vsub'),VC=$('vconf');
+const VA=$('velocityAlert'),VX=$('velocityText');
+const MG=$('metricsGrid'),BC=$('batchChain'),MI=$('medicineInfo');
+const OW=$('overlayWrap'),OI=$('overlayImg'),MV=$('map');
+const AT=$('advToggle'),GR=$('gpsRow');
 
-let file = null, map = null;
+let file=null,map=null,gpsOpen=false;
 
-D.addEventListener('click', () => F.click());
-D.addEventListener('dragover', e => { e.preventDefault(); D.classList.add('dragover'); });
-D.addEventListener('dragleave', () => D.classList.remove('dragover'));
-D.addEventListener('drop', e => {
-  e.preventDefault(); D.classList.remove('dragover');
-  const f = e.dataTransfer.files[0];
-  if (f && f.type.startsWith('image/')) loadFile(f);
+AT.addEventListener('click',()=>{
+  gpsOpen=!gpsOpen;
+  GR.classList.toggle('show',gpsOpen);
+  AT.textContent='GPS coordinates '+ (gpsOpen ? '▲' : '▼');
 });
-F.addEventListener('change', () => { if (F.files[0]) loadFile(F.files[0]); });
 
-function loadFile(f) {
-  file = f;
-  const r = new FileReader();
-  r.onload = e => {
-    P.src = e.target.result; P.classList.add('show');
-    T.style.display = 'none'; D.classList.add('has-image');
-    VB.disabled = false; R.classList.remove('show');
-    if (map) { map.remove(); map = null; }
+D.addEventListener('click',()=>F.click());
+D.addEventListener('dragover',e=>{e.preventDefault();D.classList.add('dragover')});
+D.addEventListener('dragleave',()=>D.classList.remove('dragover'));
+D.addEventListener('drop',e=>{
+  e.preventDefault();D.classList.remove('dragover');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('image/'))load(f);
+});
+F.addEventListener('change',()=>{if(F.files[0])load(F.files[0])});
+
+function load(f){
+  file=f;
+  const r=new FileReader();
+  r.onload=e=>{
+    P.src=e.target.result;P.classList.add('show');
+    T.style.display='none';D.classList.add('has-image');
+    VB.disabled=false;R.classList.remove('show');
+    if(map){map.remove();map=null}
   };
   r.readAsDataURL(f);
 }
 
-VB.addEventListener('click', async () => {
-  if (!file) return;
-  VB.disabled = true; LD.classList.add('show'); R.classList.remove('show');
-  if (map) { map.remove(); map = null; }
-  try {
-    const b64 = await new Promise(resolve => { const r = new FileReader(); r.onload = () => resolve(r.result.split(',')[1]); r.readAsDataURL(file); });
-    const lat = parseFloat(LAT.value) || 0, lng = parseFloat(LNG.value) || 0;
-    const resp = await fetch('/api/v1/verify', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ batch_id: 'BATCH-A', serial: '001', image_base64: b64, lat, lng, timestamp: new Date().toISOString() })
+VB.addEventListener('click',async()=>{
+  if(!file)return;
+  VB.disabled=true;LD.classList.add('show');R.classList.remove('show');
+  if(map){map.remove();map=null}
+  try{
+    const b64=await new Promise(r=>{const q=new FileReader();q.onload=()=>r(q.result.split(',')[1]);q.readAsDataURL(file)});
+    const lat=parseFloat(LAT.value)||0,lng=parseFloat(LNG.value)||0;
+    const r2=await fetch('/api/v1/verify',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({batch_id:'BATCH-A',serial:'001',image_base64:b64,lat,lng,timestamp:new Date().toISOString()})
     });
-    show(await resp.json(), lat, lng);
-  } catch (e) {
-    show({ status: 'error', confidence: 0, message: 'Connection failed', metrics: null, overlay_base64: null, batch_info: null, scan_history: null }, 0, 0);
-  } finally {
-    LD.classList.remove('show'); VB.disabled = false;
+    show(await r2.json(),lat,lng);
+  }catch(e){
+    show({status:'error',confidence:0,message:'Connection failed',metrics:null,overlay_base64:null,batch_info:null,scan_history:null},0,0);
+  }finally{
+    LD.classList.remove('show');VB.disabled=false;
   }
 });
 
-function show(d, slat, slng) {
+function show(d,slat,slng){
   R.classList.add('show');
-  const ok = d.status === 'verified', fake = d.status === 'counterfeit';
-  const em = ok ? '✅' : fake ? '🚫' : '⚠️';
-  const lbl = ok ? 'AUTHENTIC' : fake ? 'COUNTERFEIT' : 'ERROR';
-  const cls = ok ? 'verified' : fake ? 'counterfeit' : 'error';
+  const ok=d.status==='verified',fake=d.status==='counterfeit';
+  const em=ok?'✅':fake?'🚫':'⚠️',lb=ok?'AUTHENTIC':fake?'COUNTERFEIT':'ERROR',cl=ok?'verified':fake?'counterfeit':'error';
 
-  BD.className = 'status-badge ' + cls;
-  BI.textContent = em; BL.textContent = lbl;
+  BD.className='badge '+cl;BI.textContent=em;BL.textContent=lb;
+  VI.className='vicon '+cl;VI.textContent=em;
+  VT.className='vtitle '+cl;VT.textContent=ok?'Passed':fake?'Counterfeit':'Error';
+  VS.textContent=d.message||'';
+  VC.textContent='Confidence: '+Math.round((d.confidence||0)*100)+'%';
 
-  VI.className = 'verdict-icon ' + cls;
-  VI.textContent = em;
-  VT.className = 'verdict-title ' + cls;
-  VT.textContent = ok ? 'Verification Passed' : fake ? 'Counterfeit Detected' : 'Error';
-  VS.textContent = d.message || '';
-  VC.textContent = 'Confidence: ' + Math.round((d.confidence || 0) * 100) + '%';
-
-  // Metrics grid
-  if (d.metrics) {
-    const items = [
-      ['Edge', d.metrics.edge_diff_ratio, d.metrics.edge_diff_ratio < 1.3 ? '#22c55e' : '#ef4444'],
-      ['Histogram', d.metrics.hist_correlation, d.metrics.hist_correlation > 0.6 ? '#22c55e' : '#ef4444'],
-      ['Bleed', d.metrics.bleed_ratio, d.metrics.bleed_ratio < 0.25 ? '#22c55e' : '#ef4444'],
-      ['Confidence', (d.metrics.confidence * 100).toFixed(0) + '%', d.metrics.confidence > 0.8 ? '#22c55e' : d.metrics.confidence > 0.5 ? '#f59e0b' : '#ef4444'],
+  if(d.metrics){
+    const its=[
+      ['Edge',d.metrics.edge_diff_ratio,d.metrics.edge_diff_ratio<1.3?'#22c55e':'#ef4444'],
+      ['Histogram',d.metrics.hist_correlation,d.metrics.hist_correlation>0.6?'#22c55e':'#ef4444'],
+      ['Bleed',d.metrics.bleed_ratio,d.metrics.bleed_ratio<0.25?'#22c55e':'#ef4444'],
+      ['Confidence',(d.metrics.confidence*100).toFixed(0)+'%',d.metrics.confidence>0.8?'#22c55e':d.metrics.confidence>0.5?'#f59e0b':'#ef4444'],
     ];
-    MG.innerHTML = items.map(([l, v, c]) =>
-      '<div class="metric-card"><div class="val" style="color:' + c + '">' + v + '</div><div class="lbl">' + l + '</div><div class="metric-bar"><div class="fill" style="width:' + (typeof v === 'string' ? 100 : Math.min(Math.abs(v) * 100, 100)) + '%;background:' + c + '"></div></div></div>'
-    ).join('');
+    MG.innerHTML=its.map(([l,v,c])=>'<div class="mc"><div class="mv" style="color:'+c+'">'+v+'</div><div class="ml">'+l+'</div><div class="mb"><div class="f" style="width:'+(typeof v==='string'?100:Math.min(Math.abs(v)*100,100))+'%;background:'+c+'"></div></div></div>').join('');
   }
 
-  // Overlay
-  if (d.overlay_base64) { OW.style.display = 'block'; OI.src = 'data:image/png;base64,' + d.overlay_base64; }
-  else OW.style.display = 'none';
+  if(d.overlay_base64){OW.style.display='block';OI.src='data:image/png;base64,'+d.overlay_base64}
+  else OW.style.display='none';
 
-  // Velocity
-  const sh = d.scan_history;
-  if (sh && sh.velocity_alert) { VA.style.display = 'flex'; VX.textContent = sh.velocity_alert; }
-  else VA.style.display = 'none';
+  const sh=d.scan_history;
+  if(sh&&sh.velocity_alert){VA.style.display='flex';VX.textContent=sh.velocity_alert}
+  else VA.style.display='none';
 
-  // Batch + medicine + map
-  const bi = d.batch_info;
-  MI.style.display = 'none'; MV.classList.remove('show');
+  const bi=d.batch_info;
+  MI.style.display='none';MV.classList.remove('show');
 
-  if (bi && bi.route && bi.route.length > 0) {
-    const rt = bi.route;
-    BC.innerHTML = '<div style="font-size:12px;font-weight:600;color:#e2e8f0">' + bi.batch_id + ' · ' + bi.region + '</div>'
-      + '<div class="route-chips">' + rt.map((p, i) => '<span>' + (i + 1) + '. ' + p.location_name.split('—')[0].trim() + '</span>').join('') + '</div>'
-      + '<div style="font-size:10px;color:#475569;margin-top:4px">Minted: ' + (bi.mint_date || '—') + '</div>';
+  if(bi&&bi.route&&bi.route.length>0){
+    const rt=bi.route;
+    BC.innerHTML='<div style="font-size:12px;font-weight:600;color:#e2e8f0">'+bi.batch_id+' \u00b7 '+bi.region+'</div>'
+      +'<div class="chips">'+rt.map((p,i)=>'<span>'+(i+1)+'. '+p.location_name.split('\u2014')[0].trim()+'</span>').join('')+'</div>'
+      +'<div style="font-size:10px;color:#475569;margin-top:4px">Minted: '+(bi.mint_date||'\u2014')+'</div>';
 
-    const med = {
-      'BATCH-A': { n: 'Paracetamol 500mg', m: 'PharmaCorp Myanmar', u: 'Fever & Pain Relief', e: '2028-05', b: 'BATCH-A' },
-      'BATCH-B': { n: 'Amoxicillin 250mg', m: 'VinPharm Vietnam', u: 'Antibiotic', e: '2028-02', b: 'BATCH-B' },
-      'BATCH-C': { n: 'Omeprazole 20mg', m: 'SiamPharm Thailand', u: 'Acid Reflux', e: '2027-11', b: 'BATCH-C' },
-    };
-    const m = med[bi.batch_id];
-    if (m) {
-      MI.style.display = 'block';
-      if (ok) {
-        MI.innerHTML = '<div class="res-card"><div class="sect-title" style="color:#22c55e">✓ Medicine Information</div><div class="med-grid">'
-          + '<span class="ml">Name</span><span class="mv">' + m.n + '</span>'
-          + '<span class="ml">Manufacturer</span><span class="mv">' + m.m + '</span>'
-          + '<span class="ml">Use</span><span class="mv">' + m.u + '</span>'
-          + '<span class="ml">Expiry</span><span class="mv">' + m.e + '</span>'
-          + '<span class="ml">Batch</span><span class="mv">' + m.b + '</span>'
-          + '</div></div>';
-      } else {
-        MI.innerHTML = '<div class="res-card" style="border-color:rgba(239,68,68,.2)"><div class="sect-title" style="color:#ef4444">🚫 Counterfeit Warning</div><div style="font-size:11px;color:#fbbf24">Claims to be "' + m.n + '" but verification failed. <strong>Do not consume.</strong></div></div>';
+    const med={'BATCH-A':{n:'Paracetamol 500mg',m:'PharmaCorp Myanmar',u:'Fever & Pain Relief',e:'2028-05'},'BATCH-B':{n:'Amoxicillin 250mg',m:'VinPharm Vietnam',u:'Antibiotic',e:'2028-02'},'BATCH-C':{n:'Omeprazole 20mg',m:'SiamPharm Thailand',u:'Acid Reflux',e:'2027-11'}};
+    const m=med[bi.batch_id];
+    if(m){
+      MI.style.display='block';
+      if(ok){
+        MI.innerHTML='<div class="rc"><div class="st" style="color:#22c55e">Medicine Info</div><div class="med-g">'
+          +'<span class="ml">Name</span><span class="mv">'+m.n+'</span>'
+          +'<span class="ml">Manufacturer</span><span class="mv">'+m.m+'</span>'
+          +'<span class="ml">Use</span><span class="mv">'+m.u+'</span>'
+          +'<span class="ml">Expiry</span><span class="mv">'+m.e+'</span>'
+          +'</div></div>';
+      }else{
+        MI.innerHTML='<div class="rc" style="border-color:rgba(239,68,68,.2)"><div class="st" style="color:#ef4444">Counterfeit Warning</div><div style="font-size:11px;color:#fbbf24">Claims to be "'+m.n+'" but verification failed. <strong>Do not consume.</strong></div></div>';
       }
     }
 
     MV.classList.add('show');
-    setTimeout(() => {
-      if (map) map.remove();
-      const b = L.latLngBounds(rt.map(p => [p.lat, p.lng]));
-      if (slat && slng) b.extend([slat, slng]);
-      map = L.map('map', { zoomControl: true, scrollWheelZoom: false }).fitBounds(b, { padding: [25, 25] });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '', maxZoom: 18 }).addTo(map);
-      L.polyline(rt.map(p => [p.lat, p.lng]), { color: '#22c55e', weight: 3, dashArray: '8, 6' }).addTo(map);
-      rt.forEach((p, i) => {
-        const c = i === 0 ? '#3b82f6' : i === rt.length - 1 ? '#22c55e' : '#f59e0b';
-        L.marker([p.lat, p.lng], {
-          icon: L.divIcon({ html: '<div style="background:' + c + ';color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)">' + (i + 1) + '</div>', iconSize: [22, 22], iconAnchor: [11, 11] })
-        }).addTo(map).bindTooltip(p.location_name + ' — ' + p.event, { direction: 'top', offset: [0, -12] });
+    setTimeout(()=>{
+      if(map)map.remove();
+      const b=L.latLngBounds(rt.map(p=>[p.lat,p.lng]));
+      if(slat&&slng)b.extend([slat,slng]);
+      map=L.map('map',{zoomControl:true,scrollWheelZoom:false}).fitBounds(b,{padding:[25,25]});
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'',maxZoom:18}).addTo(map);
+      L.polyline(rt.map(p=>[p.lat,p.lng]),{color:'#22c55e',weight:3,dashArray:'8,6'}).addTo(map);
+      rt.forEach((p,i)=>{
+        const c=i===0?'#3b82f6':i===rt.length-1?'#22c55e':'#f59e0b';
+        L.marker([p.lat,p.lng],{icon:L.divIcon({html:'<div style="background:'+c+';color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)">'+(i+1)+'</div>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map).bindTooltip(p.location_name+' \u2014 '+p.event,{direction:'top',offset:[0,-12]});
       });
-      if (slat && slng) {
-        L.marker([slat, slng], {
-          icon: L.divIcon({ html: '<div style="background:#ef4444;width:12px;height:12px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(239,68,68,.5)"></div>', iconSize: [12, 12], iconAnchor: [6, 6] })
-        }).addTo(map).bindTooltip('Your scan', { direction: 'top' });
+      if(slat&&slng){
+        L.marker([slat,slng],{icon:L.divIcon({html:'<div style="background:#ef4444;width:12px;height:12px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(239,68,68,.5)"></div>',iconSize:[12,12],iconAnchor:[6,6]})}).addTo(map).bindTooltip('Your scan',{direction:'top'});
       }
-    }, 100);
-  } else {
-    BC.innerHTML = '<div style="color:#94a3b8;font-size:12px">Batch: ' + (bi?.batch_id || 'unknown') + '</div>';
+    },100);
+  }else{
+    BC.innerHTML='<div style="color:#94a3b8;font-size:12px">Batch: '+(bi?.batch_id||'unknown')+'</div>';
   }
 }
 </script>
