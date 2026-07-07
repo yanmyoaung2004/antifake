@@ -61,7 +61,7 @@ class TestVerifyEndpoint:
         async with self._make_request(b64) as client:
             resp = await client.post(
                 "/api/v1/verify",
-                json={"batch_id": "BATCH-A", "serial": "001", "image_base64": b64},
+                json={"batch_id": "BATCH-A", "serial": "001", "image_base64": b64, "lat": 21.0, "lng": 96.0, "timestamp": "2026-07-07T10:00:00"},
             )
         data = resp.json()
         assert data["status"] == "verified"
@@ -79,7 +79,7 @@ class TestVerifyEndpoint:
         async with self._make_request(b64) as client:
             resp = await client.post(
                 "/api/v1/verify",
-                json={"batch_id": "BATCH-A", "serial": "001", "image_base64": b64},
+                json={"batch_id": "BATCH-A", "serial": "001", "image_base64": b64, "lat": 21.0, "lng": 96.0, "timestamp": "2026-07-07T10:00:00"},
             )
         data = resp.json()
         assert data["status"] == "counterfeit"

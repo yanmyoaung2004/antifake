@@ -26,7 +26,7 @@ async def test_genuine_sample_verifies():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
             "/api/v1/verify",
-            json={"batch_id": "BATCH-A", "serial": "001", "image_base64": b64},
+            json={"batch_id": "BATCH-A", "serial": "001", "image_base64": b64, "lat": 21.0, "lng": 96.0, "timestamp": "2026-07-07T10:00:00"},
         )
     assert resp.status_code == 200
     assert resp.json()["status"] == "verified"
@@ -43,7 +43,7 @@ async def test_tampered_sample_flags():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
             "/api/v1/verify",
-            json={"batch_id": "BATCH-A", "serial": "001", "image_base64": b64},
+            json={"batch_id": "BATCH-A", "serial": "001", "image_base64": b64, "lat": 21.0, "lng": 96.0, "timestamp": "2026-07-07T10:00:00"},
         )
     assert resp.status_code == 200
     data = resp.json()

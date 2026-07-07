@@ -25,13 +25,15 @@ class PreviousScan(BaseModel):
 class ScanHistory(BaseModel):
     scan_count: int
     velocity_alert: str | None = None
+    density_alert: str | None = None
+    gps_alert: str | None = None
     previous_scan: PreviousScan | None = None
 
 
 class VerifyRequest(BaseModel):
     batch_id: str
     serial: str
-    image_base64: str
+    image_base64: str = ""
     lat: float = 0.0
     lng: float = 0.0
     timestamp: str = ""

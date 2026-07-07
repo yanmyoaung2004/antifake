@@ -81,10 +81,11 @@ async def test_second_scan_shows_velocity_alert():
             })
             assert resp.status_code == 200
             data = resp.json()
-            assert data["status"] == "verified"
             if i == 0:
+                assert data["status"] == "verified"
                 assert data["scan_history"]["scan_count"] == 1
             else:
+                assert data["status"] == "flagged"
                 assert data["scan_history"]["scan_count"] == 2
                 assert data["scan_history"]["velocity_alert"] is not None
                 assert "km" in data["scan_history"]["velocity_alert"]

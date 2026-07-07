@@ -109,8 +109,8 @@ body{font-family:-apple-system,system-ui,sans-serif;background:#0b1120;color:#e2
     <div class="drop-zone" id="dropZone">
       <div id="dropText">
         <div class="cam-icon">📷</div>
-        <div class="txt">Tap to take a photo of the crypto-anchor</div>
-        <div class="hint">or drag &amp; drop an image</div>
+        <div class="txt">Optional: take photo of crypto-anchor (if available)</div>
+        <div class="hint">tap to use camera — or verify without image using batch/serial only</div>
       </div>
       <img class="preview" id="preview" alt="">
       <input type="file" id="fileInput" accept="image/*" capture="environment">
@@ -128,7 +128,7 @@ body{font-family:-apple-system,system-ui,sans-serif;background:#0b1120;color:#e2
       <div id="qrStatus"></div>
     </div>
 
-    <button class="btn" id="verifyBtn" disabled style="margin-top:10px">Verify</button>
+    <button class="btn" id="verifyBtn" style="margin-top:10px">Verify</button>
 
     <div class="loading" id="loading">
       <div class="spinner"></div>
@@ -152,10 +152,7 @@ body{font-family:-apple-system,system-ui,sans-serif;background:#0b1120;color:#e2
       </div>
     </div>
 
-    <div class="alert" id="velocityAlert" style="display:none">
-      <span class="ai">⚠️</span>
-      <span id="velocityText"></span>
-    </div>
+    <div id="alertsContainer"></div>
 
     <div class="grid2">
       <div class="rc">
@@ -193,9 +190,8 @@ const VB=$('verifyBtn'),LD=$('loading');
 const QRV=$('qrVideo'),QRS=$('qrStatus'),QRB=$('scanQrBtn'),QRD=$('qrScanner');
 const R=$('result'),BD=$('badge'),BIC=$('badgeIcon'),BL=$('badgeLabel');
 const VI=$('vicon'),VT=$('vtitle'),VS=$('vsub'),VC=$('vconf');
-const VA=$('velocityAlert'),VX=$('velocityText');
 const MG=$('metricsGrid'),BC=$('batchChain'),MI=$('medicineInfo');
-const OW=$('overlayWrap'),OI=$('overlayImg'),MV=$('map');
+const AC=$('alertsContainer'),OW=$('overlayWrap'),OI=$('overlayImg'),MV=$('map');
 
 let file=null,map=null,qrStream=null,qrTimer=null;
 
@@ -260,7 +256,7 @@ VB.addEventListener('click',async()=>{
   VB.disabled=true;LD.classList.add('show');R.classList.remove('show');
   if(map){map.remove();map=null}
   try{
-    const b64=await new Promise(r=>{const q=new FileReader();q.onload=()=>r(q.result.split(',')[1]);q.readAsDataURL(file)});
+    const b64=file?await new Promise(r=>{const q=new FileReader();q.onload=()=>r(q.result.split(',')[1]);q.readAsDataURL(file)}):'';
     const r2=await fetch('/api/v1/verify',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({batch_id:BI.value||'BATCH-A',serial:SI.value||'001',image_base64:b64,lat:16.8661,lng:96.1951,timestamp:new Date().toISOString()})
@@ -292,7 +288,11 @@ function show(d,slat,slng){
   if(d.overlay_base64){OW.style.display='block';OI.src='data:image/png;base64,'+d.overlay_base64}else OW.style.display='none';
 
   const sh=d.scan_history;
-  if(sh&&sh.velocity_alert){VA.style.display='flex';VX.textContent=sh.velocity_alert}else VA.style.display='none';
+  let alertHtml='';
+  if(sh&&sh.velocity_alert)alertHtml+='<div class="alert"><span class="ai">⚡</span><span>'+sh.velocity_alert+'</span></div>';
+  if(sh&&sh.density_alert)alertHtml+='<div class="alert"><span class="ai">🔁</span><span>'+sh.density_alert+'</span></div>';
+  if(sh&&sh.gps_alert)alertHtml+='<div class="alert"><span class="ai">📍</span><span>'+sh.gps_alert+'</span></div>';
+  AC.innerHTML=alertHtml;
 
   const bi=d.batch_info;MI.style.display='none';MV.classList.remove('show');
   if(bi&&bi.route&&bi.route.length>0){
