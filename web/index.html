@@ -14,425 +14,386 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{
   font-family:-apple-system,system-ui,sans-serif;
-  background:#0b1120;
-  color:#e2e8f0;
-  min-height:100vh;
+  background:#0b1120;color:#e2e8f0;min-height:100vh;
 }
 .header{
   background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);
-  padding:28px 16px 20px;
-  text-align:center;
-  border-bottom:1px solid #1e293b;
+  padding:20px 24px;border-bottom:1px solid #1e293b;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
 }
 .header h1{
-  font-size:26px;font-weight:700;
+  font-size:22px;font-weight:700;
   background:linear-gradient(135deg,#60a5fa,#a78bfa);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-  background-clip:text;
-  letter-spacing:-0.5px;
+  background-clip:text;letter-spacing:-0.5px;
 }
-.header .sub{font-size:13px;color:#64748b;margin-top:4px}
-.container{max-width:520px;margin:0 auto;padding:16px}
-.card{
-  background:#131c31;
-  border:1px solid #1e293b;
-  border-radius:16px;
-  padding:16px;
-  margin-bottom:12px;
-  transition:opacity .3s,transform .3s;
-}
+.header .sub{font-size:12px;color:#64748b}
+.layout{max-width:1100px;margin:0 auto;padding:16px;display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+@media(max-width:800px){.layout{grid-template-columns:1fr}}
+
+/* Left column — controls */
+.ctrl-card{background:#131c31;border:1px solid #1e293b;border-radius:14px;padding:16px;margin-bottom:12px}
 .drop-zone{
-  border:2px dashed #1e293b;
-  border-radius:14px;padding:36px 20px;
-  cursor:pointer;transition:.3s;position:relative;
-  text-align:center;
+  border:2px dashed #1e293b;border-radius:12px;padding:28px 16px;
+  cursor:pointer;transition:.3s;text-align:center;
 }
 .drop-zone:hover,.drop-zone.dragover{border-color:#3b82f6;background:rgba(59,130,246,.06)}
-.drop-zone.has-image{border-color:#22c55e;padding:6px;background:rgba(34,197,94,.04)}
-.drop-zone-text .camera-icon{
-  width:48px;height:48px;margin:0 auto 10px;
+.drop-zone.has-image{border-color:#22c55e;padding:4px;background:rgba(34,197,94,.04)}
+.drop-zone-text .cam{
+  width:44px;height:44px;margin:0 auto 8px;
   background:linear-gradient(135deg,#1e293b,#334155);
-  border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font-size:22px;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;
 }
-.drop-zone-text{font-size:14px;color:#94a3b8}
-.drop-zone-text .hint{font-size:11px;color:#475569;margin-top:4px}
+.drop-zone-text{font-size:13px;color:#94a3b8}
+.drop-zone-text .hint{font-size:11px;color:#475569;margin-top:2px}
 .drop-zone input{display:none}
-.preview{max-width:100%;max-height:200px;border-radius:10px;display:none;margin:0 auto}
+.preview{max-width:100%;max-height:120px;border-radius:8px;display:none;margin:0 auto}
 .preview.show{display:block}
-.gps-row{display:flex;gap:8px;margin-top:12px}
+.gps-row{display:flex;gap:6px;margin-top:10px}
 .gps-row input{
-  flex:1;background:#0b1120;border:1px solid #1e293b;border-radius:10px;
-  padding:10px 12px;color:#e2e8f0;font-size:13px;outline:none;transition:.2s;
+  flex:1;background:#0b1120;border:1px solid #1e293b;border-radius:8px;
+  padding:8px 10px;color:#e2e8f0;font-size:12px;outline:none;transition:.2s;
 }
-.gps-row input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.gps-row input:focus{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.15)}
 .btn{
-  display:block;width:100%;margin-top:12px;
+  display:block;width:100%;margin-top:10px;
   background:linear-gradient(135deg,#2563eb,#7c3aed);
-  color:#fff;border:none;padding:14px;border-radius:12px;
-  font-size:16px;font-weight:600;cursor:pointer;transition:.3s;
+  color:#fff;border:none;padding:12px;border-radius:10px;
+  font-size:15px;font-weight:600;cursor:pointer;transition:.3s;
 }
-.btn:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(37,99,235,.3)}
+.btn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(37,99,235,.3)}
 .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
-.loading{
-  display:none;align-items:center;justify-content:center;gap:12px;
-  padding:24px 0;
-}
+.loading{display:none;align-items:center;justify-content:center;gap:10px;padding:16px 0}
 .loading.show{display:flex}
-.spinner{width:22px;height:22px;border:3px solid #1e293b;border-top:3px solid #3b82f6;border-radius:50%;animation:spin .8s linear infinite}
+.spinner{width:20px;height:20px;border:3px solid #1e293b;border-top:3px solid #3b82f6;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.loading-text{color:#64748b;font-size:14px}
+.loading-text{color:#64748b;font-size:13px}
 
+/* Right column — results */
 .result{display:none;animation:fadeIn .4s ease}
 .result.show{display:block}
-@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
+.status-row{display:flex;gap:12px;margin-bottom:10px;align-items:stretch}
 .status-badge{
-  border-radius:14px;padding:20px;text-align:center;margin-bottom:12px;
-  position:relative;overflow:hidden;
+  flex:0 0 100px;border-radius:12px;padding:14px 10px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
 }
-.status-badge.verified{
-  background:linear-gradient(135deg,#052e16,#064e3b);
-  border:1px solid rgba(34,197,94,.2);
-}
-.status-badge.verified .icon{font-size:44px;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
-.status-badge.counterfeit{
-  background:linear-gradient(135deg,#450a0a,#7f1d1d);
-  border:1px solid rgba(239,68,68,.2);
-}
-.status-badge.counterfeit .icon{font-size:44px}
-.status-badge.error{
-  background:linear-gradient(135deg,#1e293b,#0f172a);
-  border:1px solid rgba(245,158,11,.2);
-}
-.status-badge .icon{display:block;margin-bottom:6px}
-.status-badge .label{font-size:20px;font-weight:700;letter-spacing:1px}
+.status-badge.verified{background:linear-gradient(135deg,#052e16,#064e3b);border:1px solid rgba(34,197,94,.2)}
+.status-badge.counterfeit{background:linear-gradient(135deg,#450a0a,#7f1d1d);border:1px solid rgba(239,68,68,.2)}
+.status-badge.error{background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid rgba(245,158,11,.2)}
+.status-badge .icon{font-size:28px}
+.status-badge.verified .icon{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.status-badge .label{font-size:13px;font-weight:700;margin-top:2px}
 .status-badge.verified .label{color:#22c55e}
 .status-badge.counterfeit .label{color:#ef4444}
 .status-badge.error .label{color:#f59e0b}
-.status-badge .msg{color:#94a3b8;font-size:13px;margin-top:4px}
 
-.verdict-card{display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:12px}
-.verdict-icon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.verdict-card{flex:1;background:#131c31;border:1px solid #1e293b;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px}
+.verdict-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .verdict-icon.verified{background:rgba(34,197,94,.15);color:#22c55e}
 .verdict-icon.counterfeit{background:rgba(239,68,68,.15);color:#ef4444}
-.verdict-details{flex:1;min-width:0}
-.verdict-title{font-size:15px;font-weight:600}
+.verdict-icon.error{background:rgba(245,158,11,.15);color:#f59e0b}
+.verdict-title{font-size:14px;font-weight:600}
 .verdict-title.verified{color:#22c55e}
 .verdict-title.counterfeit{color:#ef4444}
-.verdict-sub{color:#64748b;font-size:12px;margin-top:2px}
-.verdict-conf{color:#475569;font-size:11px;margin-top:1px}
+.verdict-title.error{color:#f59e0b}
+.verdict-sub{color:#64748b;font-size:11px;margin-top:1px}
+.verdict-conf{color:#475569;font-size:11px;margin-top:0}
+
+.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+@media(max-width:600px){.results-grid{grid-template-columns:1fr}}
+
+.res-card{background:#131c31;border:1px solid #1e293b;border-radius:12px;padding:12px}
+.res-card .sect-title{font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.metric-card{background:#0b1120;border-radius:8px;padding:8px 10px;text-align:center}
+.metric-card .val{font-size:15px;font-weight:700;font-family:monospace}
+.metric-card .lbl{font-size:9px;color:#64748b;margin-top:1px;text-transform:uppercase;letter-spacing:.3px}
+.metric-bar{height:2px;border-radius:2px;margin-top:4px;background:#1e293b;overflow:hidden}
+.metric-bar .fill{height:100%;border-radius:2px;transition:width .6s ease}
 
 .alert{
   background:linear-gradient(135deg,#451a03,#78350f);
-  border:1px solid rgba(251,191,36,.15);
-  border-radius:12px;padding:12px 14px;margin-bottom:12px;
-  font-size:13px;color:#fbbf24;display:flex;gap:8px;align-items:flex-start;
+  border:1px solid rgba(251,191,36,.15);border-radius:10px;
+  padding:10px 12px;margin-bottom:10px;font-size:12px;color:#fbbf24;
+  display:flex;gap:8px;align-items:flex-start;
 }
-.alert .a-icon{flex-shrink:0;margin-top:1px}
+.alert .a-icon{flex-shrink:0;font-size:14px}
 
-.section-title{
-  font-size:13px;font-weight:600;color:#94a3b8;
-  text-transform:uppercase;letter-spacing:.5px;
-  margin-bottom:8px;
-}
-.metrics-grid{
-  display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;
-}
-.metric-card{
-  background:#0b1120;border-radius:10px;padding:10px 12px;text-align:center;
-}
-.metric-card .val{font-size:16px;font-weight:700;color:#e2e8f0;font-family:monospace}
-.metric-card .lbl{font-size:10px;color:#64748b;margin-top:2px;text-transform:uppercase;letter-spacing:.3px}
-.metric-bar{height:3px;border-radius:2px;margin-top:6px;background:#1e293b;overflow:hidden}
-.metric-bar .fill{height:100%;border-radius:2px;transition:width .6s ease}
-.metric-bar .fill.ok{background:#22c55e}
-.metric-bar .fill.warn{background:#f59e0b}
-.metric-bar .fill.bad{background:#ef4444}
-
-.overlay-wrap{margin-bottom:12px;text-align:center}
-.overlay-wrap img{max-width:100%;max-height:180px;border-radius:10px;border:2px solid #1e293b}
-.overlay-wrap .cap{color:#475569;font-size:11px;margin-top:4px}
-
-.batch-header{
-  font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:2px;
-  display:flex;align-items:center;gap:6px;
-}
-.batch-region{color:#64748b;font-size:12px;margin-bottom:10px}
-
-.med-card{
-  background:linear-gradient(135deg,#0f172a,#131c31);
-  border:1px solid #1e293b;border-radius:14px;padding:14px;margin-bottom:12px;
-}
-.med-card .head{font-size:13px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
-.med-card .head.ok{color:#22c55e}
-.med-card .head.bad{color:#ef4444}
-.med-grid{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12px}
+.med-grid{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px}
 .med-grid .ml{color:#64748b}
 .med-grid .mv{color:#e2e8f0}
 .med-grid .mv.warn{color:#fbbf24}
 
-#map{height:240px;border-radius:12px;display:none;border:2px solid #1e293b;overflow:hidden}
+.route-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.route-chips span{background:#0b1120;padding:3px 8px;border-radius:5px;font-size:10px;color:#94a3b8}
+
+.overlay-wrap{margin-bottom:10px;text-align:center}
+.overlay-wrap img{max-width:100%;max-height:140px;border-radius:8px;border:2px solid #1e293b}
+.overlay-wrap .cap{color:#475569;font-size:10px;margin-top:2px}
+
+#map{height:220px;border-radius:12px;display:none;border:2px solid #1e293b;overflow:hidden;margin-top:0}
 #map.show{display:block}
 
-.footer{text-align:center;margin-top:20px;padding:16px}
-.footer .brand{font-size:12px;color:#334155}
-.footer .privacy{font-size:11px;color:#1e293b;margin-top:4px;line-height:1.4}
+.footer{text-align:center;padding:16px;max-width:1100px;margin:0 auto}
+.footer .brand{font-size:11px;color:#334155}
+.footer .privacy{font-size:10px;color:#1e293b;margin-top:2px}
 
-@media(max-width:480px){
-  .header{padding:24px 16px 16px}
-  .header h1{font-size:22px}
-  .container{padding:12px}
-  .card{padding:12px;border-radius:12px}
-  .metrics-grid{grid-template-columns:1fr 1fr;gap:6px}
-  .drop-zone{padding:28px 16px}
+@media(max-width:800px){
+  .header{padding:16px;flex-direction:column;text-align:center}
+  .layout{padding:12px}
 }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>AntiFake</h1>
-  <div class="sub">Verify authenticity &amp; trace the supply chain</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <h1>AntiFake</h1>
+    <span class="sub">Crypto-Anchor Verification</span>
+  </div>
+  <span class="sub" style="font-size:11px;color:#475569">Upload a photo → verify authenticity → view supply chain</span>
 </div>
 
-<div class="container">
+<div class="layout">
 
-  <div class="drop-zone card" id="dropZone">
-    <div class="drop-zone-text" id="dropText">
-      <div class="camera-icon">📷</div>
-      <div>Tap to select a photo</div>
-      <div class="hint">or drag &amp; drop</div>
-    </div>
-    <img class="preview" id="preview" alt="">
-    <input type="file" id="fileInput" accept="image/*" capture="environment">
-  </div>
-
-  <div class="card" style="padding:12px 14px">
-    <div class="gps-row">
-      <input type="number" id="latInput" placeholder="Latitude" step="any" value="16.8661">
-      <input type="number" id="lngInput" placeholder="Longitude" step="any" value="96.1951">
-    </div>
-  </div>
-
-  <button class="btn" id="verifyBtn" disabled>Verify</button>
-
-  <div class="loading" id="loading">
-    <div class="spinner"></div>
-    <span class="loading-text">Analyzing anchor pattern &amp; tracing supply chain...</span>
-  </div>
-
-  <div class="result" id="result">
-
-    <div class="status-badge" id="badge">
-      <span class="icon" id="badgeIcon"></span>
-      <div class="label" id="badgeLabel"></div>
-      <div class="msg" id="badgeMsg"></div>
-    </div>
-
-    <div class="card" style="display:none" id="verdictCard">
-      <div class="verdict-card">
-        <div class="verdict-icon" id="verdictIcon"></div>
-        <div class="verdict-details">
-          <div class="verdict-title" id="verdictTitle"></div>
-          <div class="verdict-sub" id="verdictSub"></div>
-          <div class="verdict-conf" id="verdictConf"></div>
+  <!-- LEFT COLUMN: Controls -->
+  <div>
+    <div class="ctrl-card">
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-zone-text" id="dropText">
+          <div class="cam">📷</div>
+          <div>Select photo</div>
+          <div class="hint">or drag &amp; drop</div>
         </div>
+        <img class="preview" id="preview" alt="">
+        <input type="file" id="fileInput" accept="image/*" capture="environment">
+      </div>
+      <div class="gps-row">
+        <input type="number" id="latInput" placeholder="Lat" step="any" value="16.8661">
+        <input type="number" id="lngInput" placeholder="Lng" step="any" value="96.1951">
+      </div>
+      <button class="btn" id="verifyBtn" disabled>Verify</button>
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <span class="loading-text">Analyzing...</span>
       </div>
     </div>
+    <div class="ctrl-card" style="padding:10px 14px;font-size:11px;color:#475569;line-height:1.5">
+      Images processed once, not stored. No personal data collected.
+    </div>
+  </div>
 
-    <div class="alert" id="velocityAlert" style="display:none">
-      <span class="a-icon">⚠️</span>
-      <span id="velocityText"></span>
+  <!-- RIGHT COLUMN: Results -->
+  <div>
+    <div class="result" id="result">
+
+      <!-- Status row -->
+      <div class="status-row">
+        <div class="status-badge" id="badge">
+          <span class="icon" id="badgeIcon"></span>
+          <div class="label" id="badgeLabel"></div>
+        </div>
+        <div class="verdict-card">
+          <div class="verdict-icon" id="verdictIcon"></div>
+          <div>
+            <div class="verdict-title" id="verdictTitle"></div>
+            <div class="verdict-sub" id="verdictSub"></div>
+            <div class="verdict-conf" id="verdictConf"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert" id="velocityAlert" style="display:none">
+        <span class="a-icon">⚠️</span>
+        <span id="velocityText"></span>
+      </div>
+
+      <!-- Results grid: left = metrics, right = batch + medicine -->
+      <div class="results-grid">
+        <div class="res-card">
+          <div class="sect-title">Metrics</div>
+          <div class="metrics-grid" id="metricsGrid">
+            <div class="metric-card"><div class="val" style="color:#64748b">—</div><div class="lbl">Edge</div></div>
+            <div class="metric-card"><div class="val" style="color:#64748b">—</div><div class="lbl">Histogram</div></div>
+            <div class="metric-card"><div class="val" style="color:#64748b">—</div><div class="lbl">Bleed</div></div>
+            <div class="metric-card"><div class="val" style="color:#64748b">—</div><div class="lbl">Confidence</div></div>
+          </div>
+        </div>
+
+        <div class="res-card">
+          <div class="sect-title">Supply Chain</div>
+          <div id="batchChain"><div style="color:#64748b;font-size:11px">Awaiting scan...</div></div>
+        </div>
+      </div>
+
+      <div id="medicineInfo" style="display:none"></div>
+
+      <div class="overlay-wrap" id="overlayWrap" style="display:none">
+        <img id="overlayImg" alt="heatmap">
+        <div class="cap">Deviation heatmap — red indicates print quality loss</div>
+      </div>
+
     </div>
 
-    <div id="metricsSection" style="display:none">
-      <div class="section-title">Analysis Metrics</div>
-      <div class="metrics-grid" id="metricsGrid"></div>
-    </div>
-
-    <div class="overlay-wrap" id="overlayWrap" style="display:none">
-      <img id="overlayImg" alt="heatmap">
-      <div class="cap">Deviation heatmap — red areas indicate print quality loss</div>
-    </div>
-
-    <div id="batchInfo"></div>
-
-    <div id="medicineInfo" style="display:none"></div>
-
+    <!-- Map — below results, full width -->
     <div id="map"></div>
-  </div>
 
-  <div class="footer">
-    <div class="brand">AntiFake</div>
-    <div class="privacy">Images processed once, not stored. No personal data collected.</div>
   </div>
+</div>
+
+<div class="footer">
+  <div class="brand">AntiFake — APICTA 2026</div>
 </div>
 
 <script>
 const $ = id => document.getElementById(id);
-const dropZone = $('dropZone'), fileInput = $('fileInput'), preview = $('preview');
-const dropText = $('dropText'), latInput = $('latInput'), lngInput = $('lngInput');
-const verifyBtn = $('verifyBtn'), loading = $('loading'), result = $('result');
-const badge = $('badge'), badgeIcon = $('badgeIcon'), badgeLabel = $('badgeLabel'), badgeMsg = $('badgeMsg');
-const verdictCard = $('verdictCard'), verdictIcon = $('verdictIcon');
-const verdictTitle = $('verdictTitle'), verdictSub = $('verdictSub'), verdictConf = $('verdictConf');
-const velocityAlert = $('velocityAlert'), velocityText = $('velocityText');
-const metricsSection = $('metricsSection'), metricsGrid = $('metricsGrid');
-const overlayWrap = $('overlayWrap'), overlayImg = $('overlayImg');
-const batchInfo = $('batchInfo'), medicineInfo = $('medicineInfo'), mapDiv = $('map');
+const D = $('dropZone'), F = $('fileInput'), P = $('preview'), T = $('dropText');
+const LAT = $('latInput'), LNG = $('lngInput'), VB = $('verifyBtn'), LD = $('loading');
+const R = $('result'), BD = $('badge'), BI = $('badgeIcon'), BL = $('badgeLabel');
+const VI = $('verdictIcon'), VT = $('verdictTitle'), VS = $('verdictSub'), VC = $('verdictConf');
+const VA = $('velocityAlert'), VX = $('velocityText');
+const MG = $('metricsGrid'), BC = $('batchChain'), MI = $('medicineInfo');
+const OW = $('overlayWrap'), OI = $('overlayImg'), MV = $('map');
 
-let selectedFile = null, map = null, routeLine = null, markers = [];
+let file = null, map = null;
 
-dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('dragover');
+D.addEventListener('click', () => F.click());
+D.addEventListener('dragover', e => { e.preventDefault(); D.classList.add('dragover'); });
+D.addEventListener('dragleave', () => D.classList.remove('dragover'));
+D.addEventListener('drop', e => {
+  e.preventDefault(); D.classList.remove('dragover');
   const f = e.dataTransfer.files[0];
-  if (f && f.type.startsWith('image/')) handleFile(f);
+  if (f && f.type.startsWith('image/')) loadFile(f);
 });
-fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+F.addEventListener('change', () => { if (F.files[0]) loadFile(F.files[0]); });
 
-function handleFile(file) {
-  selectedFile = file;
-  const reader = new FileReader();
-  reader.onload = e => {
-    preview.src = e.target.result;
-    preview.classList.add('show');
-    dropText.style.display = 'none';
-    dropZone.classList.add('has-image');
-    verifyBtn.disabled = false;
-    result.classList.remove('show');
+function loadFile(f) {
+  file = f;
+  const r = new FileReader();
+  r.onload = e => {
+    P.src = e.target.result; P.classList.add('show');
+    T.style.display = 'none'; D.classList.add('has-image');
+    VB.disabled = false; R.classList.remove('show');
     if (map) { map.remove(); map = null; }
   };
-  reader.readAsDataURL(file);
+  r.readAsDataURL(f);
 }
 
-verifyBtn.addEventListener('click', async () => {
-  if (!selectedFile) return;
-  verifyBtn.disabled = true;
-  loading.classList.add('show');
-  result.classList.remove('show');
+VB.addEventListener('click', async () => {
+  if (!file) return;
+  VB.disabled = true; LD.classList.add('show'); R.classList.remove('show');
   if (map) { map.remove(); map = null; }
   try {
-    const b64 = await new Promise(resolve => { const r = new FileReader(); r.onload = () => resolve(r.result.split(',')[1]); r.readAsDataURL(selectedFile); });
-    const lat = parseFloat(latInput.value) || 0, lng = parseFloat(lngInput.value) || 0;
-    const ts = new Date().toISOString();
+    const b64 = await new Promise(resolve => { const r = new FileReader(); r.onload = () => resolve(r.result.split(',')[1]); r.readAsDataURL(file); });
+    const lat = parseFloat(LAT.value) || 0, lng = parseFloat(LNG.value) || 0;
     const resp = await fetch('/api/v1/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ batch_id: 'BATCH-A', serial: '001', image_base64: b64, lat, lng, timestamp: ts })
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batch_id: 'BATCH-A', serial: '001', image_base64: b64, lat, lng, timestamp: new Date().toISOString() })
     });
-    showResult(await resp.json(), lat, lng);
-  } catch (err) {
-    showResult({ status: 'error', confidence: 0, message: 'Connection failed', metrics: null, overlay_base64: null, batch_info: null, scan_history: null }, 0, 0);
+    show(await resp.json(), lat, lng);
+  } catch (e) {
+    show({ status: 'error', confidence: 0, message: 'Connection failed', metrics: null, overlay_base64: null, batch_info: null, scan_history: null }, 0, 0);
   } finally {
-    loading.classList.remove('show');
-    verifyBtn.disabled = false;
+    LD.classList.remove('show'); VB.disabled = false;
   }
 });
 
-function showResult(data, scanLat, scanLng) {
-  result.classList.add('show');
-  const ok = data.status === 'verified', fake = data.status === 'counterfeit';
-  const emoji = ok ? '✅' : fake ? '🚫' : '⚠️';
-  const label = ok ? 'AUTHENTIC' : fake ? 'COUNTERFEIT' : 'ERROR';
+function show(d, slat, slng) {
+  R.classList.add('show');
+  const ok = d.status === 'verified', fake = d.status === 'counterfeit';
+  const em = ok ? '✅' : fake ? '🚫' : '⚠️';
+  const lbl = ok ? 'AUTHENTIC' : fake ? 'COUNTERFEIT' : 'ERROR';
   const cls = ok ? 'verified' : fake ? 'counterfeit' : 'error';
 
-  badge.className = 'status-badge ' + cls;
-  badgeIcon.textContent = emoji;
-  badgeLabel.textContent = label;
-  badgeMsg.textContent = data.message || '';
+  BD.className = 'status-badge ' + cls;
+  BI.textContent = em; BL.textContent = lbl;
 
-  verdictCard.style.display = 'block';
-  verdictIcon.className = 'verdict-icon ' + cls;
-  verdictIcon.textContent = emoji;
-  verdictTitle.className = 'verdict-title ' + cls;
-  verdictTitle.textContent = ok ? 'Verification Passed' : fake ? 'Counterfeit Detected' : 'Error';
-  verdictSub.textContent = data.message || '';
-  verdictConf.textContent = 'Confidence: ' + Math.round((data.confidence || 0) * 100) + '%';
+  VI.className = 'verdict-icon ' + cls;
+  VI.textContent = em;
+  VT.className = 'verdict-title ' + cls;
+  VT.textContent = ok ? 'Verification Passed' : fake ? 'Counterfeit Detected' : 'Error';
+  VS.textContent = d.message || '';
+  VC.textContent = 'Confidence: ' + Math.round((d.confidence || 0) * 100) + '%';
 
   // Metrics grid
-  if (data.metrics) {
-    metricsSection.style.display = 'block';
+  if (d.metrics) {
     const items = [
-      ['Edge Diff', data.metrics.edge_diff_ratio, '#22c55e'],
-      ['Histogram', data.metrics.hist_correlation, data.metrics.hist_correlation > 0.6 ? '#22c55e' : '#ef4444'],
-      ['Pixel Bleed', data.metrics.bleed_ratio, data.metrics.bleed_ratio < 0.25 ? '#22c55e' : '#ef4444'],
-      ['Confidence', (data.metrics.confidence * 100).toFixed(0) + '%', data.metrics.confidence > 0.8 ? '#22c55e' : data.metrics.confidence > 0.5 ? '#f59e0b' : '#ef4444'],
+      ['Edge', d.metrics.edge_diff_ratio, d.metrics.edge_diff_ratio < 1.3 ? '#22c55e' : '#ef4444'],
+      ['Histogram', d.metrics.hist_correlation, d.metrics.hist_correlation > 0.6 ? '#22c55e' : '#ef4444'],
+      ['Bleed', d.metrics.bleed_ratio, d.metrics.bleed_ratio < 0.25 ? '#22c55e' : '#ef4444'],
+      ['Confidence', (d.metrics.confidence * 100).toFixed(0) + '%', d.metrics.confidence > 0.8 ? '#22c55e' : d.metrics.confidence > 0.5 ? '#f59e0b' : '#ef4444'],
     ];
-    metricsGrid.innerHTML = items.map(([lbl, val, color]) =>
-      '<div class="metric-card"><div class="val" style="color:' + color + '">' + val + '</div><div class="lbl">' + lbl + '</div><div class="metric-bar"><div class="fill" style="width:' + (typeof val === 'string' ? 100 : Math.min(Math.abs(val) * 100, 100)) + '%;background:' + color + '"></div></div></div>'
+    MG.innerHTML = items.map(([l, v, c]) =>
+      '<div class="metric-card"><div class="val" style="color:' + c + '">' + v + '</div><div class="lbl">' + l + '</div><div class="metric-bar"><div class="fill" style="width:' + (typeof v === 'string' ? 100 : Math.min(Math.abs(v) * 100, 100)) + '%;background:' + c + '"></div></div></div>'
     ).join('');
-  } else metricsSection.style.display = 'none';
+  }
 
   // Overlay
-  if (data.overlay_base64) { overlayWrap.style.display = 'block'; overlayImg.src = 'data:image/png;base64,' + data.overlay_base64; }
-  else overlayWrap.style.display = 'none';
+  if (d.overlay_base64) { OW.style.display = 'block'; OI.src = 'data:image/png;base64,' + d.overlay_base64; }
+  else OW.style.display = 'none';
 
-  // Velocity alert
-  const sh = data.scan_history;
-  if (sh && sh.velocity_alert) { velocityAlert.style.display = 'flex'; velocityText.textContent = sh.velocity_alert; }
-  else velocityAlert.style.display = 'none';
+  // Velocity
+  const sh = d.scan_history;
+  if (sh && sh.velocity_alert) { VA.style.display = 'flex'; VX.textContent = sh.velocity_alert; }
+  else VA.style.display = 'none';
 
-  // Batch + map
-  const bi = data.batch_info;
-  batchInfo.innerHTML = ''; medicineInfo.style.display = 'none'; mapDiv.classList.remove('show');
+  // Batch + medicine + map
+  const bi = d.batch_info;
+  MI.style.display = 'none'; MV.classList.remove('show');
+
   if (bi && bi.route && bi.route.length > 0) {
     const rt = bi.route;
-    batchInfo.innerHTML = '<div class="section-title" style="margin-top:4px">Supply Chain Journey</div>'
-      + '<div class="card"><div class="batch-header">📦 ' + bi.batch_id + ' — ' + bi.region + '</div>'
-      + '<div class="batch-region">Minted: ' + (bi.mint_date || 'unknown') + '</div>'
-      + '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">'
-      + rt.map((p, i) => '<span style="background:#0b1120;padding:4px 10px;border-radius:6px;font-size:11px;color:#94a3b8">' + (i + 1) + '. ' + p.location_name.split('—')[0].trim() + '</span>').join('')
-      + '</div></div>';
+    BC.innerHTML = '<div style="font-size:12px;font-weight:600;color:#e2e8f0">' + bi.batch_id + ' · ' + bi.region + '</div>'
+      + '<div class="route-chips">' + rt.map((p, i) => '<span>' + (i + 1) + '. ' + p.location_name.split('—')[0].trim() + '</span>').join('') + '</div>'
+      + '<div style="font-size:10px;color:#475569;margin-top:4px">Minted: ' + (bi.mint_date || '—') + '</div>';
 
-    const medData = {
-      'BATCH-A': { name: 'Paracetamol 500mg', manufacturer: 'PharmaCorp Myanmar', use: 'Fever & Pain Relief', expiry: '2028-05', batch: 'BATCH-A', adverse: 'Report to MMFDA' },
-      'BATCH-B': { name: 'Amoxicillin 250mg', manufacturer: 'VinPharm Vietnam', use: 'Antibiotic', expiry: '2028-02', batch: 'BATCH-B', adverse: 'Report to DAV' },
-      'BATCH-C': { name: 'Omeprazole 20mg', manufacturer: 'SiamPharm Thailand', use: 'Acid Reflux', expiry: '2027-11', batch: 'BATCH-C', adverse: 'Report to Thai FDA' },
+    const med = {
+      'BATCH-A': { n: 'Paracetamol 500mg', m: 'PharmaCorp Myanmar', u: 'Fever & Pain Relief', e: '2028-05', b: 'BATCH-A' },
+      'BATCH-B': { n: 'Amoxicillin 250mg', m: 'VinPharm Vietnam', u: 'Antibiotic', e: '2028-02', b: 'BATCH-B' },
+      'BATCH-C': { n: 'Omeprazole 20mg', m: 'SiamPharm Thailand', u: 'Acid Reflux', e: '2027-11', b: 'BATCH-C' },
     };
-    const m = medData[bi.batch_id];
+    const m = med[bi.batch_id];
     if (m) {
-      medicineInfo.style.display = 'block';
+      MI.style.display = 'block';
       if (ok) {
-        medicineInfo.innerHTML = '<div class="med-card"><div class="head ok">💊 Medicine Information</div><div class="med-grid">'
-          + '<span class="ml">Name</span><span class="mv">' + m.name + '</span>'
-          + '<span class="ml">Manufacturer</span><span class="mv">' + m.manufacturer + '</span>'
-          + '<span class="ml">Use</span><span class="mv">' + m.use + '</span>'
-          + '<span class="ml">Expiry</span><span class="mv">' + m.expiry + '</span>'
-          + '<span class="ml">Batch</span><span class="mv">' + m.batch + '</span>'
-          + '<span class="ml">Adverse Events</span><span class="mv warn">' + m.adverse + '</span>'
+        MI.innerHTML = '<div class="res-card"><div class="sect-title" style="color:#22c55e">✓ Medicine Information</div><div class="med-grid">'
+          + '<span class="ml">Name</span><span class="mv">' + m.n + '</span>'
+          + '<span class="ml">Manufacturer</span><span class="mv">' + m.m + '</span>'
+          + '<span class="ml">Use</span><span class="mv">' + m.u + '</span>'
+          + '<span class="ml">Expiry</span><span class="mv">' + m.e + '</span>'
+          + '<span class="ml">Batch</span><span class="mv">' + m.b + '</span>'
           + '</div></div>';
       } else {
-        medicineInfo.innerHTML = '<div class="med-card"><div class="head bad">🚫 Counterfeit Warning</div><div style="color:#fbbf24;font-size:12px">This product claims to be "' + m.name + '" but verification failed. <strong>Do not consume.</strong> Report to local health authorities.</div></div>';
+        MI.innerHTML = '<div class="res-card" style="border-color:rgba(239,68,68,.2)"><div class="sect-title" style="color:#ef4444">🚫 Counterfeit Warning</div><div style="font-size:11px;color:#fbbf24">Claims to be "' + m.n + '" but verification failed. <strong>Do not consume.</strong></div></div>';
       }
     }
 
-    mapDiv.classList.add('show');
+    MV.classList.add('show');
     setTimeout(() => {
       if (map) map.remove();
-      const bounds = L.latLngBounds(rt.map(p => [p.lat, p.lng]));
-      if (scanLat && scanLng) bounds.extend([scanLat, scanLng]);
-      map = L.map('map', { zoomControl: true, scrollWheelZoom: false }).fitBounds(bounds, { padding: [30, 30] });
+      const b = L.latLngBounds(rt.map(p => [p.lat, p.lng]));
+      if (slat && slng) b.extend([slat, slng]);
+      map = L.map('map', { zoomControl: true, scrollWheelZoom: false }).fitBounds(b, { padding: [25, 25] });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '', maxZoom: 18 }).addTo(map);
-      const pts = rt.map(p => [p.lat, p.lng]);
-      L.polyline(pts, { color: '#22c55e', weight: 3, dashArray: '8, 6' }).addTo(map);
+      L.polyline(rt.map(p => [p.lat, p.lng]), { color: '#22c55e', weight: 3, dashArray: '8, 6' }).addTo(map);
       rt.forEach((p, i) => {
-        const color = i === 0 ? '#3b82f6' : i === rt.length - 1 ? '#22c55e' : '#f59e0b';
-        const m = L.marker([p.lat, p.lng], {
-          icon: L.divIcon({ html: '<div style="background:' + color + ';color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5)">' + (i + 1) + '</div>', iconSize: [24, 24], iconAnchor: [12, 12] })
-        }).addTo(map);
-        m.bindTooltip(p.location_name + ' — ' + p.event, { direction: 'top', offset: [0, -14] });
+        const c = i === 0 ? '#3b82f6' : i === rt.length - 1 ? '#22c55e' : '#f59e0b';
+        L.marker([p.lat, p.lng], {
+          icon: L.divIcon({ html: '<div style="background:' + c + ';color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)">' + (i + 1) + '</div>', iconSize: [22, 22], iconAnchor: [11, 11] })
+        }).addTo(map).bindTooltip(p.location_name + ' — ' + p.event, { direction: 'top', offset: [0, -12] });
       });
-      if (scanLat && scanLng) {
-        L.marker([scanLat, scanLng], {
-          icon: L.divIcon({ html: '<div style="background:#ef4444;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 12px rgba(239,68,68,.6)"></div>', iconSize: [14, 14], iconAnchor: [7, 7] })
-        }).addTo(map).bindTooltip('Your scan location', { direction: 'top' });
+      if (slat && slng) {
+        L.marker([slat, slng], {
+          icon: L.divIcon({ html: '<div style="background:#ef4444;width:12px;height:12px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(239,68,68,.5)"></div>', iconSize: [12, 12], iconAnchor: [6, 6] })
+        }).addTo(map).bindTooltip('Your scan', { direction: 'top' });
       }
     }, 100);
+  } else {
+    BC.innerHTML = '<div style="color:#94a3b8;font-size:12px">Batch: ' + (bi?.batch_id || 'unknown') + '</div>';
   }
 }
 </script>
