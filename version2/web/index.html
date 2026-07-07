@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>AntiFake — Verify</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -11,112 +13,112 @@
     background: #0f172a;
     color: #fff;
     min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
   }
-  .container {
-    max-width: 520px;
-    width: 100%;
-    padding: 32px 24px;
-    text-align: center;
-  }
-  h1 { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
-  .sub { color: #94a3b8; font-size: 14px; margin-bottom: 28px; }
+  .container { max-width: 560px; margin: 0 auto; padding: 24px 16px; text-align: center; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 2px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
   .drop-zone {
-    border: 2px dashed #334155;
-    border-radius: 16px;
-    padding: 48px 24px;
-    cursor: pointer;
-    transition: 0.2s;
-    position: relative;
+    border: 2px dashed #334155; border-radius: 14px; padding: 36px 20px;
+    cursor: pointer; transition: 0.2s; position: relative;
   }
   .drop-zone:hover, .drop-zone.dragover { border-color: #3b82f6; background: #1e293b; }
-  .drop-zone.has-image { border-color: #22c55e; padding: 8px; }
-  .drop-zone-text { font-size: 15px; color: #94a3b8; }
-  .drop-zone-text .icon { font-size: 40px; display: block; margin-bottom: 12px; }
+  .drop-zone.has-image { border-color: #22c55e; padding: 6px; }
+  .drop-zone-text { font-size: 14px; color: #94a3b8; }
+  .drop-zone-text .icon { font-size: 36px; display: block; margin-bottom: 8px; }
   .drop-zone input { display: none; }
-  .preview { max-width: 100%; max-height: 300px; border-radius: 8px; display: none; }
+  .preview { max-width: 100%; max-height: 240px; border-radius: 8px; display: none; }
   .preview.show { display: block; margin: 0 auto; }
+  .gps-row {
+    display: flex; gap: 8px; margin-top: 12px;
+  }
+  .gps-row input {
+    flex: 1; background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+    padding: 10px; color: #e2e8f0; font-size: 13px; outline: none;
+  }
+  .gps-row input:focus { border-color: #3b82f6; }
   .btn {
-    margin-top: 20px;
-    background: #3b82f6;
-    color: #fff;
-    border: none;
-    padding: 14px 32px;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    width: 100%;
-    transition: 0.2s;
+    margin-top: 14px; background: #3b82f6; color: #fff; border: none;
+    padding: 14px; border-radius: 12px; font-size: 16px; font-weight: 600;
+    cursor: pointer; width: 100%; transition: 0.2s;
   }
   .btn:hover { background: #2563eb; }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .loading { display: none; align-items: center; justify-content: center; gap: 10px; margin-top: 20px; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .loading { display: none; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; }
   .loading.show { display: flex; }
-  .spinner {
-    width: 20px; height: 20px;
-    border: 3px solid #334155;
-    border-top: 3px solid #3b82f6;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
+  .spinner { width: 18px; height: 18px; border: 3px solid #334155; border-top: 3px solid #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .result { display: none; margin-top: 24px; }
+  .result { display: none; margin-top: 20px; text-align: left; }
   .result.show { display: block; }
-  .badge {
-    font-size: 22px; font-weight: 700; padding: 12px 20px;
-    border-radius: 12px; margin-bottom: 12px;
-  }
+  .badge { font-size: 20px; font-weight: 700; padding: 12px 16px; border-radius: 10px; text-align: center; margin-bottom: 12px; }
   .badge.verified { background: #052e16; color: #22c55e; }
   .badge.counterfeit { background: #450a0a; color: #ef4444; }
   .badge.error { background: #1e293b; color: #f59e0b; }
-  .message { color: #94a3b8; font-size: 14px; margin-bottom: 16px; }
-  .confidence { color: #64748b; font-size: 13px; margin-bottom: 16px; }
+  .msg { color: #94a3b8; font-size: 13px; text-align: center; margin-bottom: 12px; }
+  .confidence { color: #64748b; font-size: 12px; text-align: center; margin-bottom: 14px; }
   .metrics {
-    background: #1e293b; border-radius: 10px; padding: 14px; margin-bottom: 16px;
-    text-align: left; font-size: 13px;
+    background: #1e293b; border-radius: 10px; padding: 12px; margin-bottom: 14px; font-size: 12px;
   }
-  .metrics div { display: flex; justify-content: space-between; padding: 3px 0; }
-  .metrics .label { color: #94a3b8; }
-  .metrics .value { color: #e2e8f0; font-family: monospace; }
-  .overlay-wrap { margin-bottom: 16px; }
-  .overlay-wrap img { max-width: 100%; border-radius: 8px; border: 2px solid #334155; }
-  .overlay-wrap .caption { color: #64748b; font-size: 12px; margin-top: 6px; }
-  .footer { margin-top: 32px; font-size: 12px; color: #475569; }
+  .metrics .row { display: flex; justify-content: space-between; padding: 2px 0; }
+  .metrics .l { color: #94a3b8; }
+  .metrics .v { color: #e2e8f0; font-family: monospace; }
+  .alert {
+    background: #451a03; border: 1px solid #78350f; border-radius: 10px;
+    padding: 12px; margin-bottom: 14px; font-size: 13px; color: #fbbf24;
+  }
+  .overlay-wrap { margin-bottom: 14px; text-align: center; }
+  .overlay-wrap img { max-width: 100%; max-height: 200px; border-radius: 8px; border: 2px solid #334155; }
+  .overlay-wrap .cap { color: #64748b; font-size: 11px; margin-top: 4px; }
+  #map { height: 260px; border-radius: 10px; margin-bottom: 14px; display: none; border: 2px solid #334155; }
+  #map.show { display: block; }
+  .batch-header { font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #e2e8f0; }
+  .batch-region { font-size: 12px; color: #64748b; margin-bottom: 10px; }
+  .footer { margin-top: 28px; font-size: 11px; color: #334155; text-align: center; }
+  @media (max-width: 480px) {
+    .container { padding: 16px 12px; }
+    h1 { font-size: 24px; }
+    .gps-row { flex-direction: column; }
+  }
 </style>
 </head>
 <body>
 <div class="container">
   <h1>AntiFake</h1>
-  <p class="sub">Upload a photo of the crypto-anchor to verify</p>
+  <p class="sub">Upload a photo of the crypto-anchor to verify authenticity and trace its supply chain journey</p>
 
   <div class="drop-zone" id="dropZone">
     <div class="drop-zone-text" id="dropText">
       <span class="icon">📷</span>
-      Tap to select a photo<br><span style="font-size:12px;color:#475569">or drag & drop</span>
+      Tap to select a photo<br>
+      <span style="font-size:11px;color:#475569">or drag &amp; drop (phones can take a photo directly)</span>
     </div>
     <img class="preview" id="preview" alt="preview">
-    <input type="file" id="fileInput" accept="image/*">
+    <input type="file" id="fileInput" accept="image/*" capture="environment">
+  </div>
+
+  <div class="gps-row">
+    <input type="number" id="latInput" placeholder="Latitude" step="any" value="16.8661">
+    <input type="number" id="lngInput" placeholder="Longitude" step="any" value="96.1951">
   </div>
 
   <button class="btn" id="verifyBtn" disabled>Verify</button>
 
   <div class="loading" id="loading">
     <div class="spinner"></div>
-    <span style="color:#94a3b8">Analyzing anchor pattern...</span>
+    <span style="color:#94a3b8;font-size:14px">Analyzing anchor pattern &amp; tracing supply chain...</span>
   </div>
 
   <div class="result" id="result">
     <div class="badge" id="badge"></div>
-    <div class="message" id="message"></div>
+    <div class="msg" id="message"></div>
     <div class="confidence" id="confidence"></div>
+    <div class="alert" id="velocityAlert" style="display:none"></div>
     <div class="metrics" id="metrics"></div>
-    <div class="overlay-wrap" id="overlayWrap">
-      <img id="overlayImg" alt="heatmap">
-      <div class="caption">Deviation heatmap — red areas indicate print quality loss</div>
+    <div class="overlay-wrap" id="overlayWrap" style="display:none">
+      <img id="overlayImg" alt="deviation heatmap">
+      <div class="cap">Deviation heatmap — red areas indicate print quality loss</div>
     </div>
+    <div id="batchInfo"></div>
+    <div id="map"></div>
   </div>
 
   <div class="footer">AntiFake v2 — APICTA 2026</div>
@@ -127,6 +129,8 @@ const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const preview = document.getElementById('preview');
 const dropText = document.getElementById('dropText');
+const latInput = document.getElementById('latInput');
+const lngInput = document.getElementById('lngInput');
 const verifyBtn = document.getElementById('verifyBtn');
 const loading = document.getElementById('loading');
 const result = document.getElementById('result');
@@ -134,52 +138,59 @@ const badge = document.getElementById('badge');
 const message = document.getElementById('message');
 const confidence = document.getElementById('confidence');
 const metrics = document.getElementById('metrics');
+const velocityAlert = document.getElementById('velocityAlert');
 const overlayWrap = document.getElementById('overlayWrap');
 const overlayImg = document.getElementById('overlayImg');
+const batchInfo = document.getElementById('batchInfo');
+const mapDiv = document.getElementById('map');
 
 let selectedFile = null;
+let map = null;
+let routeLine = null;
+let markers = [];
 
 dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', (e) => {
-  e.preventDefault();
-  dropZone.classList.remove('dragover');
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
   const f = e.dataTransfer.files[0];
   if (f && f.type.startsWith('image/')) handleFile(f);
 });
-
-fileInput.addEventListener('change', () => {
-  if (fileInput.files[0]) handleFile(fileInput.files[0]);
-});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
 
 function handleFile(file) {
   selectedFile = file;
   const reader = new FileReader();
-  reader.onload = (e) => {
+  reader.onload = e => {
     preview.src = e.target.result;
     preview.classList.add('show');
     dropText.style.display = 'none';
     dropZone.classList.add('has-image');
     verifyBtn.disabled = false;
     result.classList.remove('show');
+    if (map) { map.remove(); map = null; }
   };
   reader.readAsDataURL(file);
 }
 
 verifyBtn.addEventListener('click', async () => {
   if (!selectedFile) return;
-
   verifyBtn.disabled = true;
   loading.classList.add('show');
   result.classList.remove('show');
+  if (map) { map.remove(); map = null; }
 
   try {
-    const reader = new FileReader();
-    const b64 = await new Promise((resolve) => {
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.readAsDataURL(selectedFile);
+    const b64 = await new Promise(resolve => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result.split(',')[1]);
+      r.readAsDataURL(selectedFile);
     });
+
+    const lat = parseFloat(latInput.value) || 0;
+    const lng = parseFloat(lngInput.value) || 0;
+    const ts = new Date().toISOString();
 
     const resp = await fetch('/api/v1/verify', {
       method: 'POST',
@@ -187,58 +198,112 @@ verifyBtn.addEventListener('click', async () => {
       body: JSON.stringify({
         batch_id: 'BATCH-A',
         serial: '001',
-        image_base64: b64
+        image_base64: b64,
+        lat: lat,
+        lng: lng,
+        timestamp: ts
       })
     });
 
     const data = await resp.json();
-    showResult(data);
+    showResult(data, lat, lng);
   } catch (err) {
-    showResult({ status: 'error', confidence: 0, message: 'Connection failed: ' + err.message, metrics: null, overlay_base64: null });
+    showResult({ status: 'error', confidence: 0, message: 'Connection failed: ' + err.message, metrics: null, overlay_base64: null, batch_info: null, scan_history: null }, 0, 0);
   } finally {
     loading.classList.remove('show');
     verifyBtn.disabled = false;
   }
 });
 
-function showResult(data) {
+function showResult(data, scanLat, scanLng) {
   result.classList.add('show');
-
-  const isVerified = data.status === 'verified';
-  const isCounterfeit = data.status === 'counterfeit';
-  const badgeClass = isVerified ? 'verified' : isCounterfeit ? 'counterfeit' : 'error';
-  const badgeText = isVerified ? '✅ AUTHENTIC' : isCounterfeit ? '🚫 COUNTERFEIT' : '⚠️ ERROR';
-  const badgeColor = isVerified ? '#22c55e' : isCounterfeit ? '#ef4444' : '#f59e0b';
-
-  badge.className = 'badge ' + badgeClass;
-  badge.textContent = badgeText;
-  badge.style.color = '';
+  const ok = data.status === 'verified';
+  const fake = data.status === 'counterfeit';
+  const cls = ok ? 'verified' : fake ? 'counterfeit' : 'error';
+  const lbl = ok ? 'AUTHENTIC' : fake ? 'COUNTERFEIT' : 'ERROR';
+  badge.className = 'badge ' + cls;
+  badge.textContent = ok ? 'Passed' : fake ? 'Failed' : 'Error';
   message.textContent = data.message || '';
   confidence.textContent = 'Confidence: ' + Math.round((data.confidence || 0) * 100) + '%';
 
+  // Metrics
   if (data.metrics) {
     metrics.style.display = 'block';
     metrics.innerHTML = '';
-    const rows = [
-      ['Edge diff ratio', data.metrics.edge_diff_ratio],
-      ['Histogram correlation', data.metrics.hist_correlation],
-      ['Pixel bleed ratio', data.metrics.bleed_ratio],
-      ['Confidence', data.metrics.confidence * 100 + '%'],
-    ];
-    rows.forEach(([label, val]) => {
-      const row = document.createElement('div');
-      row.innerHTML = '<span class="label">' + label + '</span><span class="value">' + val + '</span>';
-      metrics.appendChild(row);
+    [['Edge diff ratio', data.metrics.edge_diff_ratio],
+     ['Histogram correlation', data.metrics.hist_correlation],
+     ['Pixel bleed ratio', data.metrics.bleed_ratio],
+     ['Confidence', (data.metrics.confidence * 100).toFixed(0) + '%']].forEach(([l, v]) => {
+      const d = document.createElement('div');
+      d.className = 'row';
+      d.innerHTML = '<span class="l">' + l + '</span><span class="v">' + v + '</span>';
+      metrics.appendChild(d);
     });
-  } else {
-    metrics.style.display = 'none';
-  }
+  } else metrics.style.display = 'none';
 
+  // Overlay
   if (data.overlay_base64) {
     overlayWrap.style.display = 'block';
     overlayImg.src = 'data:image/png;base64,' + data.overlay_base64;
-  } else {
-    overlayWrap.style.display = 'none';
+  } else overlayWrap.style.display = 'none';
+
+  // Velocity alert
+  const sh = data.scan_history;
+  if (sh && sh.velocity_alert) {
+    velocityAlert.style.display = 'block';
+    velocityAlert.textContent = sh.velocity_alert;
+  } else velocityAlert.style.display = 'none';
+
+  // Batch info + map
+  const bi = data.batch_info;
+  batchInfo.innerHTML = '';
+  mapDiv.classList.remove('show');
+  if (bi && bi.route && bi.route.length > 0) {
+    const rt = bi.route;
+    batchInfo.innerHTML = '<div class="batch-header">' + bi.batch_id + ' — ' + bi.region + '</div>'
+      + '<div class="batch-region">Minted: ' + (bi.mint_date || 'unknown') + ' • Route: '
+      + rt.map(p => p.location_name.split('—')[0].trim()).join(' → ') + '</div>';
+
+    mapDiv.classList.add('show');
+    setTimeout(() => {
+      if (map) map.remove();
+      const bounds = L.latLngBounds(rt.map(p => [p.lat, p.lng]));
+      if (scanLat && scanLng) bounds.extend([scanLat, scanLng]);
+      map = L.map('map', { zoomControl: true, scrollWheelZoom: false }).fitBounds(bounds, { padding: [30, 30] });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
+        maxZoom: 18
+      }).addTo(map);
+
+      // Route line
+      const pts = rt.map(p => [p.lat, p.lng]);
+      routeLine = L.polyline(pts, { color: '#22c55e', weight: 3, dashArray: '8, 6' }).addTo(map);
+
+      // Route markers
+      markers = [];
+      rt.forEach((p, i) => {
+        const color = i === 0 ? '#3b82f6' : i === rt.length - 1 ? '#22c55e' : '#f59e0b';
+        const icon = L.divIcon({
+          html: '<div style="background:' + color + ';color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4)">' + (i + 1) + '</div>',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        const m = L.marker([p.lat, p.lng], { icon }).addTo(map);
+        m.bindTooltip(p.location_name + ' — ' + p.event, { direction: 'top', offset: [0, -14] });
+        markers.push(m);
+      });
+
+      // Scan location marker
+      if (scanLat && scanLng) {
+        const scanIcon = L.divIcon({
+          html: '<div style="background:#ef4444;color:#fff;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 8px rgba(239,68,68,0.6)"></div>',
+          iconSize: [12, 12],
+          iconAnchor: [6, 6]
+        });
+        L.marker([scanLat, scanLng], { icon: scanIcon }).addTo(map)
+          .bindTooltip('Current scan location', { direction: 'top' });
+      }
+    }, 100);
   }
 }
 </script>

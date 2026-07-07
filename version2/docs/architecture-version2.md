@@ -2,9 +2,9 @@
 
 ## Overview
 
-Version 2 is a focused, demo-ready build for the APICTA competition. It strips away infrastructure dependencies (no Redis, no blockchain, no Docker) and concentrates on the single most impressive feature: **crypto-anchor visual verification** — using a phone camera to detect counterfeit prints by analyzing microscopic noise patterns.
+Version 2 is a focused, demo-ready build for the APICTA competition. It combines **crypto-anchor visual verification** with **supply chain tracing** — after verifying authenticity, it shows the product's journey from factory to pharmacy on an interactive map, and detects anomalous movement when the same serial is scanned from two distant locations within a short time.
 
-**Stack:** Python/FastAPI + OpenCV + Expo (React Native)
+**Stack:** Python/FastAPI + OpenCV + SQLite + Leaflet.js
 
 ---
 
@@ -13,16 +13,17 @@ Version 2 is a focused, demo-ready build for the APICTA competition. It strips a
 | Layer | Tool | Purpose |
 |---|---|---|
 | Backend framework | FastAPI + Uvicorn | Async Python HTTP server |
-| Computer vision | OpenCV + NumPy | Edge detection, histogram correlation, pixel bleed analysis, heatmap overlay |
-| Image processing | Pillow | Image loading and format conversion |
-| Mobile | React Native (Expo) | Cross-platform app with camera access |
-| Camera | expo-camera | QR scanning + Layer 2 photo capture |
-| QR scanning | expo-barcode-scanner | Detect and read QR codes |
-| QR generation | qrcode (Python) | Generate Layer 1 QR for printable labels |
-| HTTP | axios (mobile), httpx (Python) | API communication |
-| Testing | pytest, pytest-asyncio | Unit tests + API roundtrip tests |
-| Code quality | ruff | Linting |
-| Package management | uv | Python dependency resolution |
+| Computer vision | OpenCV + NumPy | Edge detection, histogram, pixel bleed, heatmap |
+| Database | SQLite + aiosqlite | Batch registry, route points, scan history |
+| Map | Leaflet.js + OpenStreetMap | Supply chain route visualization |
+| Mobile | React Native (Expo) | Camera + GPS app |
+| Web | Vanilla HTML/CSS/JS | Drag-drop upload with GPS + map display |
+| Camera | expo-camera (mobile), capture attribute (web) | Photo capture on both platforms |
+| QR | expo-barcode-scanner, qrcode (Python) | Scan (mobile) + generate (labels) |
+| HTTP | axios, httpx | API communication |
+| Testing | pytest, httpx | 16 unit + integration tests |
+| Linting | ruff | Code quality |
+| Dependencies | uv | Python package management |
 
 ---
 
@@ -38,11 +39,16 @@ version2/
 │   └── architecture-version2.md         # This file
 ├── backend/
 │   ├── app/
-│   │   ├── main.py                      # FastAPI with POST /api/v1/verify
+│   │   ├── main.py                      # FastAPI with POST /api/v1/verify + batch/velocity features
+│   │   ├── database.py                  # SQLite queries (get_batch, get_route, get_scan_history, record_scan)
+│   │   ├── models.py                    # Pydantic models (VerifyRequest, BatchInfo, ScanHistory, RoutePoint)
 │   │   └── crypto/
 │   │       └── anchor.py                # Core CV logic (all functions)
+│   ├── seed/
+│   │   └── seed_data.py                 # Seeds 3 batches with supply chain routes
 │   ├── tests/
 │   │   ├── test_anchor.py               # 8 tests for CV logic + API
+│   │   ├── test_enhanced.py             # 4 tests for batch lookup + velocity + map data
 │   │   ├── test_samples.py              # 2 tests for pre-generated images
 │   │   └── test_verify.py               # 2 tests for API health + roundtrip
 │   ├── tools/
@@ -217,6 +223,70 @@ Used for generating test images and printable counterfeit labels.
 
 ---
 
+## Database Schema (SQLite)
+
+The database is auto-created on server startup. Re-run `seed/seed_data.py` to populate it.
+
+### `batches` table
+
+| Column | Type | Description |
+|---|---|---|
+| `batch_id` | TEXT PK | e.g. "BATCH-A" |
+| `region` | TEXT | Distribution region, e.g. "MYANMAR" |
+| `mint_date` | TEXT | ISO date of manufacture |
+
+### `route_points` table
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | INTEGER PK | Auto-increment |
+| `batch_id` | TEXT FK | References batches |
+| `point_order` | INTEGER | Sequence number (1 = origin) |
+| `location_name` | TEXT | e.g. "Yangon Factory" |
+| `lat`, `lng` | REAL | GPS coordinates |
+| `event` | TEXT | e.g. "Manufactured", "Delivered to Pharmacy" |
+
+### `scans` table
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | INTEGER PK | Auto-increment |
+| `serial` | TEXT | Product serial number |
+| `batch_id` | TEXT | Which batch it belongs to |
+| `lat`, `lng` | REAL | GPS at time of scan |
+| `timestamp` | TEXT | ISO timestamp of scan |
+| `result` | TEXT | "verified" or "counterfeit" |
+
+---
+
+## Velocity Check
+
+When a serial is scanned for the second time, the system computes:
+
+```
+distance = haversine(prev_lat, prev_lng, curr_lat, curr_lng)  ← in km
+hours = (curr_timestamp - prev_timestamp)                      ← in hours
+speed = distance / hours                                        ← in km/h
+```
+
+If `speed > 120 km/h` (configurable), a velocity alert is returned. Example:
+
+> ⚠ Impossible movement detected — 570 km in 30 min (1140 km/h). Previous scan was at (16.9, 96.2).
+
+---
+
+## Journey Map
+
+After verification, the web page renders an interactive Leaflet map showing:
+1. **Route line** — green dashed line from factory to pharmacy
+2. **Route markers** — numbered circles at each waypoint (blue = origin, yellow = transit, green = destination)
+3. **Tooltips** — hover/tap to see location name and event
+4. **Scan marker** — red dot at the current scan's GPS location
+
+The map auto-zooms to fit all markers. The batch info section above the map shows the route as text: "Factory → Port → Distributor → Pharmacy".
+
+---
+
 ## Mobile App Flow
 
 ```
@@ -291,14 +361,16 @@ Print both labels, stick on two identical boxes. One scans as authentic, the oth
 
 | Aspect | v1 | v2 |
 |---|---|---|
-| Scope | Full supply chain system | Single demo feature |
-| Infrastructure | Redis, Docker, Hardhat, blockchain | None — runs on bare Python |
-| Anomaly engine | Velocity, density, GPS | Not included |
+| Scope | Full supply chain system | Anchor verification + batch tracing + velocity check |
+| Infrastructure | Redis, Docker, Hardhat, blockchain | SQLite (zero-config) |
+| Anomaly engine | Velocity, density, GPS with Redis | Velocity check via scan history in SQLite |
 | Blockchain | Merkle root minting, scan events | Not included |
+| Batch registry | Enterprise API | SQLite with seed data (3 batches, realistic routes) |
+| Supply chain map | Not included | Leaflet.js interactive map with route waypoints |
 | Offline support | AsyncStorage queue | Not included |
 | Enterprise API | Batch creation with API key | Not included |
-| Dependencies | 10+ services | Just Python + Node.js |
-| Test count | 19 backend + 6 contracts | 12 backend |
+| Dependencies | 10+ services | Python + Node.js |
+| Test count | 19 backend + 6 contracts | 16 backend |
 | Setup time | ~1 hour | ~5 minutes |
 
 ---
@@ -309,11 +381,21 @@ See [`test.md`](test.md) for full details.
 
 ```bash
 cd version2/backend
-uv run pytest -v          # 12 tests in under 2 seconds
+uv run pytest -v          # 16 tests in under 3 seconds
 
-# Test genuine
-python -c "import httpx, base64; print(httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'001','image_base64':base64.b64encode(open('sample_images/genuine_BATCH-A_001.png','rb').read()).decode()}).json())"
+# Test genuine (with batch info + velocity)
+python -c "import httpx,base64;b64=base64.b64encode(open('sample_images/genuine_BATCH-A_001.png','rb').read()).decode();r=httpx.post('http://localhost:8000/api/v1/verify',json={'batch_id':'BATCH-A','serial':'001','image_base64':b64,'lat':16.8661,'lng':96.1951,'timestamp':'2026-07-06T10:00:00'});print(r.json().get('status'),'| batch:',r.json().get('batch_info',{}).get('batch_id'))"
 
 # Test counterfeit
-python -c "import httpx, base64; print(httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'001','image_base64':base64.b64encode(open('sample_images/tampered_BATCH-A_001.png','rb').read()).decode()}).json())"
+python -c "import httpx,base64;b64=base64.b64encode(open('sample_images/tampered_BATCH-A_001.png','rb').read()).decode();r=httpx.post('http://localhost:8000/api/v1/verify',json={'batch_id':'BATCH-A','serial':'001','image_base64':b64,'lat':16.8661,'lng':96.1951,'timestamp':'2026-07-06T10:00:00'});print(r.json().get('status'))"
+
+# Velocity alert (scan same serial twice)
+python -c "
+import httpx,base64,sqlite3,os
+con=sqlite3.connect('antifake.db');con.execute('DELETE FROM scans');con.commit();con.close()
+b64=base64.b64encode(open('sample_images/genuine_BATCH-A_001.png','rb').read()).decode()
+for lat,lng,ts in [(16.8661,96.1951,'2026-07-06T10:00:00'),(21.9731,96.0836,'2026-07-06T10:30:00')]:
+    r=httpx.post('http://localhost:8000/api/v1/verify',json={'batch_id':'BATCH-A','serial':'V-TEST','image_base64':b64,'lat':lat,'lng':lng,'timestamp':ts})
+    d=r.json();print('Scan',d['scan_history']['scan_count'],': alert' if d['scan_history'].get('velocity_alert') else ': ok')
+"
 ```

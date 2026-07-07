@@ -8,6 +8,8 @@ dependencies = [
     "opencv-python-headless",
     "numpy",
     "Pillow",
+    "aiosqlite",
+    "qrcode[pil]",
 ]
 
 [project.optional-dependencies]

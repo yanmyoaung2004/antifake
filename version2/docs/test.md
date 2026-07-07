@@ -8,7 +8,9 @@ cd version2\backend
 uv run pytest -v
 ```
 
-Expected: **12 passed**
+Expected: **16 passed**
+
+### Core CV tests
 
 | Test | What it checks |
 |---|---|
@@ -20,14 +22,33 @@ Expected: **12 passed**
 | `test_noisy_image_flags` | Random noise → degraded |
 | `test_valid_anchor_returns_verified` | API returns verified for good image |
 | `test_tampered_anchor_returns_counterfeit` | API returns counterfeit for bad image |
+
+### Sample image tests
+
+| Test | What it checks |
+|---|---|
 | `test_genuine_sample_verifies` | Pre-generated genuine PNG works |
 | `test_tampered_sample_flags` | Pre-generated tampered PNG caught |
+
+### API health
+
+| Test | What it checks |
+|---|---|
 | `test_health` | Health endpoint works |
 | `test_verify_returns_verified_for_valid_image` | Full HTTP roundtrip |
 
+### Enhanced features (batch + velocity + map)
+
+| Test | What it checks |
+|---|---|
+| `test_verify_returns_batch_info` | Verified scan includes batch metadata + 4 route points |
+| `test_second_scan_shows_velocity_alert` | Same serial scanned twice from different cities triggers velocity warning |
+| `test_unknown_batch_returns_no_batch_info` | Unregistered batch still verifies anchor but returns null batch_info |
+| `test_counterfeit_still_returns_batch_info` | Counterfeit detection preserves batch info from registry |
+
 ---
 
-## 2. Test with Curl/Python (No Phone Needed)
+## 2. Test with Python (No Phone Needed)
 
 Start the backend first:
 
@@ -37,81 +58,61 @@ uv run uvicorn app.main:app --reload
 
 Then in another terminal:
 
-### Genuine anchor — should return `verified`
+### Genuine anchor — returns `verified` with batch info
 
 ```powershell
-python -c "import httpx, base64; b64 = base64.b64encode(open('sample_images/genuine_BATCH-A_001.png','rb').read()).decode(); r = httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'001','image_base64':b64}); print(r.json())"
+uv run python -c "import httpx, base64; b64 = base64.b64encode(open('sample_images/genuine_BATCH-A_001.png','rb').read()).decode(); r = httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'001','image_base64':b64,'lat':16.8661,'lng':96.1951,'timestamp':'2026-07-06T10:00:00'}); d=r.json(); print('Status:', d['status']); print('Batch:', d.get('batch_info',{}).get('batch_id'), d.get('batch_info',{}).get('region')); print('Route points:', len(d.get('batch_info',{}).get('route',[])))"
 ```
 
-Expected output:
-
-```json
-{"status":"verified","confidence":1.0,"message":"Anchor pattern matches. Authentic.",...}
+Expected:
+```
+Status: verified
+Batch: BATCH-A MYANMAR
+Route points: 4
 ```
 
-### Tampered anchor — should return `counterfeit`
+### Velocity alert — scan same serial twice
 
 ```powershell
-python -c "import httpx, base64; b64 = base64.b64encode(open('sample_images/tampered_BATCH-A_001.png','rb').read()).decode(); r = httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'001','image_base64':b64}); print(r.json())"
-```
-
-Expected output:
-
-```json
-{"status":"counterfeit","confidence":0.44,"message":"Print quality deviation detected...","overlay_base64":"..."}
-```
-
-### Test each metric manually
-
-```powershell
-python -c "
-import httpx, base64
-# Genuine
+uv run python -c "
+import httpx, base64, sqlite3, os
+# Clean DB for clean test
+con = sqlite3.connect('antifake.db'); con.execute('DELETE FROM scans'); con.commit(); con.close()
 b64 = base64.b64encode(open('sample_images/genuine_BATCH-A_001.png','rb').read()).decode()
-r = httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'001','image_base64':b64})
-m = r.json()['metrics']
-print('Genuine:  edge_diff=%s  hist_corr=%s  bleed=%s  confidence=%s' % (m['edge_diff_ratio'], m['hist_correlation'], m['bleed_ratio'], m['confidence']))
 
-# Tampered
-b64 = base64.b64encode(open('sample_images/tampered_BATCH-A_001.png','rb').read()).decode()
-r = httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'001','image_base64':b64})
-m = r.json()['metrics']
-print('Tampered: edge_diff=%s  hist_corr=%s  bleed=%s  confidence=%s' % (m['edge_diff_ratio'], m['hist_correlation'], m['bleed_ratio'], m['confidence']))
+# Scan 1 — Yangon
+r1 = httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'TEST-V','image_base64':b64,'lat':16.8661,'lng':96.1951,'timestamp':'2026-07-06T10:00:00'})
+print('Scan 1 — count:', r1.json()['scan_history']['scan_count'])
+
+# Scan 2 — Mandalay 30 min later (570 km)
+r2 = httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'TEST-V','image_base64':b64,'lat':21.9731,'lng':96.0836,'timestamp':'2026-07-06T10:30:00'})
+d2 = r2.json()
+print('Scan 2 — count:', d2['scan_history']['scan_count'], '| alert:', 'YES' if d2['scan_history'].get('velocity_alert') else 'none')
 "
 ```
 
 Expected:
-
 ```
-Genuine:  edge_diff=1.0  hist_corr=1.0  bleed=0.0  confidence=1.0
-Tampered: edge_diff=1.031  hist_corr=-0.202  bleed=0.608  confidence=0.44
+Scan 1 — count: 1
+Scan 2 — count: 2 | alert: YES
+```
+
+### Counterfeit with batch info
+
+```powershell
+uv run python -c "import httpx, base64; b64 = base64.b64encode(open('sample_images/tampered_BATCH-A_001.png','rb').read()).decode(); r = httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'001','image_base64':b64,'lat':16.8661,'lng':96.1951,'timestamp':'2026-07-06T10:00:00'}); d=r.json(); print('Status:', d['status']); print('Batch:', d.get('batch_info',{}).get('batch_id')); print('Overlay:', 'YES' if d.get('overlay_base64') else 'none')"
+```
+
+Expected:
+```
+Status: counterfeit
+Batch: BATCH-A
+Overlay: YES
 ```
 
 ---
 
-## 3. Physical Demo (Phone + Printed Boxes)
-
-### Print the labels
-
-```bash
-uv run python tools/printable_labels.py
-```
-
-Print `demo_labels/label_*.png` on sticker paper. Attach one to each of two identical medicine boxes.
-
-### Scan with phone
-
-1. Start both backend and mobile app
-2. Open Expo Go, scan the QR code
-3. Press "Start Scanning"
-4. Point at the QR on the **genuine** box → you should see "AUTHENTIC" with green check
-5. Point at the QR on the **counterfeit** box → you should see "COUNTERFEIT" with red X and a heatmap overlay
-
----
-
-## 4. Web Interface (Drag & Drop)
-
-The simplest way to test — no terminal commands needed after starting the server.
+## 3. Web Interface (Drag & Drop)
 
 ```bash
 uv run uvicorn app.main:app --reload
@@ -121,40 +122,31 @@ Open `http://localhost:8000` in any browser.
 
 **Steps:**
 1. Click the drop zone or drag an image file onto it
-2. Select a genuine or tampered sample from `sample_images/`
+2. Adjust GPS coordinates (defaults to Yangon)
 3. Click **Verify**
-4. Result shows instantly: green "AUTHENTIC" or red "COUNTERFEIT" with metrics and heatmap overlay
+4. Result shows: badge + metrics + supply chain route on interactive map + velocity alerts
 
-This works on desktop and mobile browsers. No Expo Go, no QR scanning, no terminal commands beyond starting the server.
+Phones: the file input has `capture="environment"` so you can take a photo directly with the rear camera.
 
 ---
 
-## 5. Physical Demo (Phone + Printed Boxes)
-
-### Print the labels
+## 4. Physical Demo (Phone + Printed Boxes)
 
 ```bash
 uv run python tools/printable_labels.py
 ```
 
-Print `demo_labels/label_*.png` on sticker paper. Attach one to each of two identical medicine boxes.
-
-### Scan with phone
-
-1. Start both backend and mobile app
-2. Open Expo Go, scan the QR code
-3. Press "Start Scanning"
-4. Point at the QR on the **genuine** box → you should see "AUTHENTIC" with green check
-5. Point at the QR on the **counterfeit** box → you should see "COUNTERFEIT" with red X and a heatmap overlay
+Print `demo_labels/label_*.png` on sticker paper. Attach one to each of two identical medicine boxes. Scan with phone camera or upload a photo to the web interface.
 
 ---
 
-## 6. Troubleshooting
+## 5. Troubleshooting
 
 | Symptom | Fix |
 |---|---|
 | `ModuleNotFoundError` | Run `uv pip install -e ".[dev]"` |
 | Backend won't start | Check port 8000 is free: `netstat -ano | findstr :8000` |
-| Phone can't connect to Expo | Run `npx expo start --tunnel` or use curl instead |
-| `curl` not recognized | Use `python -c "..."` commands above instead |
-| All tampered tests pass but demo fails | Re-run `uv run python tools/printable_labels.py` to regenerate labels |
+| Database errors | Delete `antifake.db` and restart the server |
+| No route shown on map | Run `uv run python seed/seed_data.py` to populate batch data |
+| Expo Go can't connect | Use the web interface instead: `http://localhost:8000` |
+| Velocity alert not showing | The same serial needs to be scanned twice with different GPS within minutes |
