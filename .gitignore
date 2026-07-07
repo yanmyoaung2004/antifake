@@ -12,3 +12,4 @@ build/
 .expo/
 *.egg-info/
 *.db
+.firecrawl/
