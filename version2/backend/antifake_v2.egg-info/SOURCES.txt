@@ -1,9 +1,0 @@
-pyproject.toml
-antifake_v2.egg-info/PKG-INFO
-antifake_v2.egg-info/SOURCES.txt
-antifake_v2.egg-info/dependency_links.txt
-antifake_v2.egg-info/requires.txt
-antifake_v2.egg-info/top_level.txt
-app/__init__.py
-app/main.py
-tests/test_verify.py
