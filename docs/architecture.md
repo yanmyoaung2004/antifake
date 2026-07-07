@@ -264,6 +264,22 @@ The database is auto-created on server startup. Re-run `seed/seed_data.py` to po
 
 ---
 
+## Hash Chain Integrity
+
+Every scan record is cryptographically chained using SHA256:
+
+```
+chain_hash = SHA256(serial | batch_id | lat | lng | timestamp | result | prev_hash)
+```
+
+- First scan: `prev_hash = "0" * 64` (all zeros)
+- Subsequent scans: `prev_hash` = chain_hash of the previous scan
+- Verification: recompute every hash from start to end, compare with stored values
+
+If any record is modified, its hash changes, breaking all subsequent hashes. The chain becomes irreparably broken — instantly detectable via `GET /api/v1/chain/verify?serial=X`.
+
+This provides blockchain-level immutability with zero infrastructure — no nodes, no gas, no network. The web UI shows a green 🔗 badge for intact chains and a red 🔓 badge if the chain is broken.
+
 ## Verification Flow
 
 The `POST /api/v1/verify` endpoint runs checks in sequence:

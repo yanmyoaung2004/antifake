@@ -64,6 +64,13 @@ The benchmark generates 50 genuine and 50 counterfeit crypto-anchors and tests a
 | `test_unknown_batch_returns_no_batch_info` | Unregistered batch still verifies anchor but returns null batch_info |
 | `test_counterfeit_still_returns_batch_info` | Counterfeit detection preserves batch info from registry |
 
+### Hash chain
+
+| Endpoint | What it checks |
+|---|---|
+| `GET /api/v1/chain/verify?serial=X` | Verifies SHA256 chain integrity for all scans of serial X |
+| Chain badge in web UI | Green 🔗 if chain intact, red 🔓 if tampered |
+
 ---
 
 ## 2. Test with Python (No Phone Needed)

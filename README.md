@@ -39,6 +39,7 @@ A failing anchor check returns a **heatmap overlay** showing exactly where the p
 | Density detection (replay alert) | Working |
 | GPS cross-reference (region check) | Working |
 | Crypto-anchor CV (optional bonus) | Working — 100% synthetic, tuned for real-world |
+| Hash chain integrity (tamper-proof) | Working — SHA256 chained scan audit |
 | Real browser GPS geolocation | Working — auto-detects phone location |
 | Supply chain map (Leaflet.js) | Working — 3 seeded routes |
 | PWA (install on phone) | Working — manifest + service worker |
