@@ -59,15 +59,19 @@ block_hash = SHA256(serial | batch_id | lat | lng | timestamp | result | prev_bl
 | Velocity detection (Haversine) | Working |
 | Density detection (replay alert) | Working |
 | GPS cross-reference (region check) | Working |
-| Crypto-anchor CV (optional bonus) | Working — 100% synthetic, tuned for real-world |
+| Crypto-anchor CV (optional bonus) | Working — 16x16 block noise + edge sharpness metric |
+| QR-based anchor localization | Working — detects printed QR, derives anchor position |
 | Hash chain integrity (tamper-proof) | Working — SHA256 chained scan audit |
 | Real browser GPS geolocation | Working — auto-detects phone location |
-| Supply chain map (Leaflet.js) | Working — 3 seeded routes |
+| HTTPS support (self-signed cert) | Working — `tools/generate_cert.py` + `run_https.py` |
+| Supply chain map (Leaflet.js) | Working — 3 seeded + N partner routes |
 | PWA (install on phone) | Working — manifest + service worker |
 | Demo labels (printable) | Working — genuine + counterfeit |
 | QR scanning (jsQR) | Working — requires HTTPS for camera |
+| Partner onboarding API | Working — `POST /api/v1/register` + `GET /api/v1/batches` |
 | Benchmark (100 samples) | 100% accuracy on synthetic images |
-| Robustness test (14 conditions) | Documents real-world performance |
+| Robustness test (14 conditions) | 10/14 genuine pass (vs 5/14 baseline) |
+| Real-phone-photo test (13 scenarios) | Best-effort; spatial-temporal is the authoritative signal |
 
 ---
 
@@ -78,10 +82,52 @@ cd backend
 uv venv .venv --python 3.12
 .venv\Scripts\activate
 uv pip install -e ".[dev]"
+.venv\Scripts\python.exe seed/seed_data.py
 .venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
 Open http://localhost:8000. Type any batch ID + serial, tap **Verify**. No image needed.
+
+### With HTTPS (for camera/QR scanning on phone)
+
+```bash
+.venv\Scripts\python.exe tools/generate_cert.py   # one-time
+.venv\Scripts\python.exe tools/run_https.py        # or: uvicorn with --ssl-keyfile/--ssl-certfile
+```
+
+See [docs/setup.md](docs/setup.md) for the full HTTPS walkthrough including iOS/Android cert trust.
+
+---
+
+## Partner Onboarding
+
+Manufacturers and distributors can register batches via the API:
+
+```bash
+.venv\Scripts\python.exe tools/onboard_partner.py
+```
+
+Or call the endpoint directly:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "batch_id": "MM-PARA-2026-07",
+    "region": "MYANMAR",
+    "mint_date": "2026-07-01",
+    "manufacturer": "PharmaCorp Myanmar Ltd.",
+    "drug_name": "Paracetamol 500mg",
+    "drug_use": "Fever & Pain Relief",
+    "expiry": "2028-06",
+    "route": [
+      {"location_name": "Factory", "lat": 16.8661, "lng": 96.1951, "event": "Manufactured"},
+      {"location_name": "Pharmacy", "lat": 21.9588, "lng": 96.0896, "event": "Delivered"}
+    ]
+  }'
+```
+
+`GET /api/v1/batches` returns all registered batches.
 
 ---
 
@@ -89,9 +135,10 @@ Open http://localhost:8000. Type any batch ID + serial, tap **Verify**. No image
 
 ```bash
 cd backend
-.venv\Scripts\python.exe -m pytest -v          # 16 tests
+.venv\Scripts\python.exe -m pytest -v          # 32 tests
 .venv\Scripts\python.exe tools/benchmark.py    # 100 samples, 100% accuracy
-.venv\Scripts\python.exe tools/robustness_test.py  # 14 real-world conditions
+.venv\Scripts\python.exe tools/robustness_test.py  # 14 conditions
+.venv\Scripts\python.exe tools/photo_robustness.py  # 13 simulated phone photos
 ```
 
 ---
@@ -101,19 +148,28 @@ cd backend
 ```
 ├── backend/
 │   ├── app/
-│   │   ├── main.py            # FastAPI — velocity, density, GPS, optional CV
-│   │   ├── database.py         # SQLite — batches, routes, scans
+│   │   ├── main.py            # FastAPI — velocity, density, GPS, CV, partner API
+│   │   ├── database.py         # SQLite — batches, routes, scans (with hash chain)
 │   │   ├── models.py           # Pydantic models
-│   │   └── crypto/anchor.py    # CV logic (generate, compare, heatmap)
-│   ├── seed/seed_data.py       # 3 batches with supply chain routes
-│   ├── tests/                  # 16 tests
+│   │   ├── tools_helpers.py    # Shared label generation
+│   │   └── crypto/
+│   │       ├── anchor.py       # 16x16 block noise + comparison metrics
+│   │       └── preprocess.py   # QR-based photo preprocessing pipeline
+│   ├── seed/seed_data.py       # 3 baseline batches with full metadata
+│   ├── tests/                  # 32 tests
 │   ├── tools/
 │   │   ├── benchmark.py        # 100% accuracy benchmark
-│   │   ├── robustness_test.py  # 14-condition real-world test
+│   │   ├── robustness_test.py  # 14-condition test
+│   │   ├── photo_robustness.py # 13-condition phone photo test
 │   │   ├── generate_samples.py # Test image generator
-│   │   └── printable_labels.py # Demo sticker labels
+│   │   ├── printable_labels.py # Demo sticker labels
+│   │   ├── generate_cert.py    # Self-signed cert for HTTPS
+│   │   ├── run_https.py        # HTTPS server wrapper
+│   │   └── onboard_partner.py  # Partner batch import demo
 │   ├── sample_images/          # 6 test images
-│   └── demo_labels/            # 2 printable labels
+│   ├── demo_labels/            # 2 printable labels
+│   ├── cert.pem, key.pem       # (gitignored, generated per-machine)
+│   └── antifake.db             # (gitignored, auto-created)
 ├── web/index.html              # PWA web interface
 ├── mobile/                     # Expo app (alternative)
 └── docs/                       # setup, test, architecture guides
