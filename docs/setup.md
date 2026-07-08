@@ -25,10 +25,12 @@ uv pip install -e ".[dev]"
 .venv\Scripts\python.exe seed/seed_data.py
 
 # Start the server
-.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8765 --reload
 ```
 
-Open `http://localhost:8000`. **HTTP works for everything except the camera/QR scanner** (which requires HTTPS).
+Open `http://127.0.0.1:8765`. **HTTP works for everything except the camera/QR scanner** (which requires HTTPS).
+
+> **Note on port 8000:** Windows reserves the 7997–8096 range for Hyper-V / WSL. If you see `WinError 10013` ("an attempt was made to access a socket in a way forbidden by its access permissions"), pick a port outside that range — `8765` works, or any port above 10000. The examples in this doc use **8765**; substitute your own port if you use a different one.
 
 ---
 
@@ -48,7 +50,7 @@ This creates a self-signed `cert.pem` and `key.pem` (1-year validity) with SANs 
 ### Run with HTTPS
 
 ```bash
-.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --ssl-keyfile key.pem --ssl-certfile cert.pem --reload
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8765 --ssl-keyfile key.pem --ssl-certfile cert.pem --reload
 ```
 
 Or use the convenience script:
@@ -62,12 +64,12 @@ Or use the convenience script:
 The browser will show a security warning because the cert is self-signed.
 
 **iOS:**
-1. Visit `https://<your-pc-ip>:8000` once
+1. Visit `https://<your-pc-ip>:8765` once
 2. When the warning appears, download the cert profile (Settings > General > VPN & Device Management)
 3. Trust it: **Settings > General > About > Certificate Trust Settings** — toggle ON for "AntiFake"
 
 **Android:**
-1. Visit `https://<your-pc-ip>:8000`
+1. Visit `https://<your-pc-ip>:8765`
 2. Tap "Advanced" → "Proceed anyway" (Chrome) or "Install certificate" (system installer)
 
 **Find your PC's IP** (so the phone can reach the server):
@@ -88,7 +90,7 @@ Look for the IPv4 address on your WiFi/Ethernet adapter (e.g., `192.168.1.100`).
 
 ## Web Interface
 
-The PWA at `http://localhost:8000` (or `https://...` for HTTPS) is the primary interface. From a phone on the same WiFi:
+The PWA at `http://localhost:8765` (or `https://...` for HTTPS) is the primary interface. From a phone on the same WiFi:
 
 - **No image needed**: just enter batch/serial, tap Verify
 - **Optional photo**: tap the camera area to take a photo of the crypto-anchor (requires HTTPS)

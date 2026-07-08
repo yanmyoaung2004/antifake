@@ -7,7 +7,7 @@ the manufacturer's ERP would call this endpoint directly to register
 each batch as it's produced.
 
 Usage:
-    python tools/onboard_partner.py [--url http://localhost:8000]
+    python tools/onboard_partner.py [--url http://localhost:8765]
 
 Edit the PARTNERS list below to add your own factories.
 """
@@ -117,7 +117,7 @@ def get(url: str, path: str) -> dict:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--url", default="http://localhost:8000")
+    parser.add_argument("--url", default="http://localhost:8765")
     args = parser.parse_args()
 
     print(f"\n  Onboarding {len(PARTNERS)} partner batches to {args.url}\n")

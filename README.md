@@ -86,7 +86,7 @@ uv pip install -e ".[dev]"
 .venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-Open http://localhost:8000. Type any batch ID + serial, tap **Verify**. No image needed.
+Open http://localhost:8765. Type any batch ID + serial, tap **Verify**. No image needed.
 
 ### With HTTPS (for camera/QR scanning on phone)
 
@@ -110,7 +110,7 @@ Manufacturers and distributors can register batches via the API:
 Or call the endpoint directly:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/register \
+curl -X POST http://localhost:8765/api/v1/register \
   -H "Content-Type: application/json" \
   -d '{
     "batch_id": "MM-PARA-2026-07",

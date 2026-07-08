@@ -155,7 +155,7 @@ Then in another terminal:
 ### Genuine anchor — returns `verified` with batch info
 
 ```powershell
-.venv\Scripts\python.exe -c "import httpx, base64; b64 = base64.b64encode(open('sample_images/genuine_BATCH-A_001.png','rb').read()).decode(); r = httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'001','image_base64':b64,'lat':16.8661,'lng':96.1951,'timestamp':'2026-07-09T10:00:00'}); d=r.json(); print('Status:', d['status']); print('Drug:', d.get('batch_info',{}).get('drug_name')); print('Manufacturer:', d.get('batch_info',{}).get('manufacturer')); print('Route points:', len(d.get('batch_info',{}).get('route',[])))"
+.venv\Scripts\python.exe -c "import httpx, base64; b64 = base64.b64encode(open('sample_images/genuine_BATCH-A_001.png','rb').read()).decode(); r = httpx.post('http://localhost:8765/api/v1/verify', json={'batch_id':'BATCH-A','serial':'001','image_base64':b64,'lat':16.8661,'lng':96.1951,'timestamp':'2026-07-09T10:00:00'}); d=r.json(); print('Status:', d['status']); print('Drug:', d.get('batch_info',{}).get('drug_name')); print('Manufacturer:', d.get('batch_info',{}).get('manufacturer')); print('Route points:', len(d.get('batch_info',{}).get('route',[])))"
 ```
 
 Expected:
@@ -174,10 +174,10 @@ import httpx, base64, sqlite3
 con = sqlite3.connect('antifake.db'); con.execute('DELETE FROM scans'); con.commit(); con.close()
 b64 = base64.b64encode(open('sample_images/genuine_BATCH-A_001.png','rb').read()).decode()
 
-r1 = httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'TEST-V','image_base64':b64,'lat':16.8661,'lng':96.1951,'timestamp':'2026-07-09T10:00:00'})
+r1 = httpx.post('http://localhost:8765/api/v1/verify', json={'batch_id':'BATCH-A','serial':'TEST-V','image_base64':b64,'lat':16.8661,'lng':96.1951,'timestamp':'2026-07-09T10:00:00'})
 print('Scan 1 — count:', r1.json()['scan_history']['scan_count'])
 
-r2 = httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'TEST-V','image_base64':b64,'lat':21.9731,'lng':96.0836,'timestamp':'2026-07-09T10:30:00'})
+r2 = httpx.post('http://localhost:8765/api/v1/verify', json={'batch_id':'BATCH-A','serial':'TEST-V','image_base64':b64,'lat':21.9731,'lng':96.0836,'timestamp':'2026-07-09T10:30:00'})
 d2 = r2.json()
 print('Scan 2 — count:', d2['scan_history']['scan_count'], '| alert:', 'YES' if d2['scan_history'].get('velocity_alert') else 'none')
 "
@@ -192,7 +192,7 @@ Scan 2 — count: 2 | alert: YES
 ### Counterfeit with batch info
 
 ```powershell
-.venv\Scripts\python.exe -c "import httpx, base64; b64 = base64.b64encode(open('sample_images/tampered_BATCH-A_001.png','rb').read()).decode(); r = httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'BATCH-A','serial':'001','image_base64':b64,'lat':16.8661,'lng':96.1951,'timestamp':'2026-07-09T10:00:00'}); d=r.json(); print('Status:', d['status']); print('Batch:', d.get('batch_info',{}).get('batch_id')); print('Overlay:', 'YES' if d.get('overlay_base64') else 'none')"
+.venv\Scripts\python.exe -c "import httpx, base64; b64 = base64.b64encode(open('sample_images/tampered_BATCH-A_001.png','rb').read()).decode(); r = httpx.post('http://localhost:8765/api/v1/verify', json={'batch_id':'BATCH-A','serial':'001','image_base64':b64,'lat':16.8661,'lng':96.1951,'timestamp':'2026-07-09T10:00:00'}); d=r.json(); print('Status:', d['status']); print('Batch:', d.get('batch_info',{}).get('batch_id')); print('Overlay:', 'YES' if d.get('overlay_base64') else 'none')"
 ```
 
 Expected:
@@ -211,7 +211,7 @@ Overlay: YES
 Imports 5 representative partner batches. Verify any of them:
 
 ```powershell
-.venv\Scripts\python.exe -c "import httpx; r = httpx.post('http://localhost:8000/api/v1/verify', json={'batch_id':'MM-PARA-2026-07','serial':'X1','lat':16.8661,'lng':96.1951,'timestamp':'2026-07-09T00:00:00'}); d=r.json(); print('Status:', d['status']); print('Drug:', d['batch_info']['drug_name']); print('Manufacturer:', d['batch_info']['manufacturer']); print('Route points:', len(d['batch_info']['route']))"
+.venv\Scripts\python.exe -c "import httpx; r = httpx.post('http://localhost:8765/api/v1/verify', json={'batch_id':'MM-PARA-2026-07','serial':'X1','lat':16.8661,'lng':96.1951,'timestamp':'2026-07-09T00:00:00'}); d=r.json(); print('Status:', d['status']); print('Drug:', d['batch_info']['drug_name']); print('Manufacturer:', d['batch_info']['manufacturer']); print('Route points:', len(d['batch_info']['route']))"
 ```
 
 ---
@@ -222,7 +222,7 @@ Imports 5 representative partner batches. Verify any of them:
 .venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-Open `http://localhost:8000` in any browser.
+Open `http://localhost:8765` in any browser.
 
 **Steps:**
 1. Click the drop zone or drag an image file onto it
@@ -255,7 +255,7 @@ Print `demo_labels/label_*.png` on sticker paper. Attach one to each of two iden
 | Symptom | Fix |
 |---|---|
 | `ModuleNotFoundError` | Run `uv pip install -e ".[dev]"` |
-| Backend won't start | Check port 8000 is free: `netstat -ano \| findstr :8000` |
+| Backend won't start | Check port 8765 is free: `netstat -ano \| findstr :8765`. Windows reserves 7997–8096 (Hyper-V) — pick any other port. |
 | Database errors | Delete `antifake.db` and restart the server |
 | No route shown on map | Run `.venv\Scripts\python.exe seed/seed_data.py` to populate batch data |
 | Camera/QR scanner blocked | Use HTTPS: `.venv\Scripts\python.exe tools/run_https.py` |

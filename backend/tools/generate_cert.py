@@ -86,7 +86,7 @@ def generate():
     print("    Android: Chrome > Settings > Site settings > insecure/secure")
     print()
     print("  Start the server with HTTPS:")
-    print("    .venv\\Scripts\\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --ssl-keyfile key.pem --ssl-certfile cert.pem --reload")
+    print("    .venv\\Scripts\\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8765 --ssl-keyfile key.pem --ssl-certfile cert.pem --reload")
 
 
 if __name__ == "__main__":

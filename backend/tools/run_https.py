@@ -2,7 +2,7 @@
 Run the AntiFake server with HTTPS enabled (auto-generates cert if needed).
 
 Usage:
-    python tools/run_https.py [--port 8000] [--host 0.0.0.0]
+    python tools/run_https.py [--port 8765] [--host 0.0.0.0]
 
 Auto-detects cert.pem and key.pem in the backend root. If missing,
 generates a self-signed cert for local development. Camera access in
@@ -22,7 +22,7 @@ import uvicorn
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="0.0.0.0")
-    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
 

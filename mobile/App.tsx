@@ -10,7 +10,7 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import axios from "axios";
 
-const API_BASE = "http://10.0.2.2:8000";
+const API_BASE = "http://10.0.2.2:8765";
 
 type Screen = "start" | "scanning" | "result";
 

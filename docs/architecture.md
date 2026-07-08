@@ -435,7 +435,7 @@ Browsers block `getUserMedia` (camera) on HTTP unless on `localhost`. The QR sca
 ```bash
 .venv\Scripts\python.exe tools/run_https.py
 # or
-.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 \
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8765 \
   --ssl-keyfile key.pem --ssl-certfile cert.pem
 ```
 
