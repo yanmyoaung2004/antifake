@@ -352,16 +352,21 @@ function show(d,slat,slng){
       +'<div class="chips">'+rt.map((p,i)=>'<span>'+(i+1)+'. '+p.location_name.split('—')[0].trim()+'</span>').join('')+'</div>'
       +'<div style="font-size:10px;color:#475569;margin-top:4px">Minted: '+(bi.mint_date||'—')+'</div>';
 
-    const med={'BATCH-A':{n:'Paracetamol 500mg',m:'PharmaCorp Myanmar',u:'Fever & Pain Relief',e:'2028-05'},'BATCH-B':{n:'Amoxicillin 250mg',m:'VinPharm Vietnam',u:'Antibiotic',e:'2028-02'},'BATCH-C':{n:'Omeprazole 20mg',m:'SiamPharm Thailand',u:'Acid Reflux',e:'2027-11'}};
-    const m=med[bi.batch_id];
-    if(m){
-      MI.style.display='block';
-      if(ok)MI.innerHTML='<div class="rc"><div class="st" style="color:#22c55e">Medicine Info</div><div class="med-g">'
-        +'<span class="ml">Name</span><span class="mv">'+m.n+'</span>'
-        +'<span class="ml">Manufacturer</span><span class="mv">'+m.m+'</span>'
-        +'<span class="ml">Use</span><span class="mv">'+m.u+'</span>'
-        +'<span class="ml">Expiry</span><span class="mv">'+m.e+'</span></div></div>';
-      else MI.innerHTML='<div class="rc" style="border-color:rgba(239,68,68,.2)"><div class="st" style="color:#ef4444">Counterfeit Warning</div><div style="font-size:11px;color:#fbbf24">Claims to be "'+m.n+'" but verification failed. <strong>Do not consume.</strong></div></div>';
+    const med = {
+      name: bi.drug_name || '',
+      manufacturer: bi.manufacturer || '',
+      use: bi.drug_use || '',
+      expiry: bi.expiry || ''
+    };
+    if (med.name) {
+      MI.style.display = 'block';
+      if (ok) MI.innerHTML = '<div class="rc"><div class="st" style="color:#22c55e">Medicine Info</div><div class="med-g">'
+        + '<span class="ml">Name</span><span class="mv">' + med.name + '</span>'
+        + (med.manufacturer ? '<span class="ml">Manufacturer</span><span class="mv">' + med.manufacturer + '</span>' : '')
+        + (med.use ? '<span class="ml">Use</span><span class="mv">' + med.use + '</span>' : '')
+        + (med.expiry ? '<span class="ml">Expiry</span><span class="mv">' + med.expiry + '</span>' : '')
+        + '</div></div>';
+      else MI.innerHTML = '<div class="rc" style="border-color:rgba(239,68,68,.2)"><div class="st" style="color:#ef4444">Counterfeit Warning</div><div style="font-size:11px;color:#fbbf24">Claims to be "' + med.name + '" but verification failed. <strong>Do not consume.</strong></div></div>';
     }
 
     MV.classList.add('show');

@@ -12,6 +12,10 @@ class BatchInfo(BaseModel):
     batch_id: str
     region: str
     mint_date: str
+    manufacturer: str = ""
+    drug_name: str = ""
+    drug_use: str = ""
+    expiry: str = ""
     route: list[RoutePoint]
 
 
@@ -49,3 +53,32 @@ class VerifyResponse(BaseModel):
     overlay_base64: str | None = None
     batch_info: BatchInfo | None = None
     scan_history: ScanHistory | None = None
+
+
+class RoutePointInput(BaseModel):
+    location_name: str
+    lat: float
+    lng: float
+    event: str
+
+
+class RegisterBatchRequest(BaseModel):
+    batch_id: str
+    region: str
+    mint_date: str
+    manufacturer: str = ""
+    drug_name: str = ""
+    drug_use: str = ""
+    expiry: str = ""
+    route: list[RoutePointInput] = []
+
+
+class RegisterBatchResponse(BaseModel):
+    batch_id: str
+    inserted: bool
+    message: str
+
+
+class ListBatchesResponse(BaseModel):
+    batches: list[BatchInfo]
+    total: int

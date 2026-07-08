@@ -11,8 +11,30 @@ from contextlib import asynccontextmanager
 
 from app.crypto.anchor import generate_anchor, compare_anchors, compute_overlay
 from app.crypto.preprocess import preprocess_photo
-from app.database import init_db, get_batch, get_route, get_scan_history, get_scan_count, record_scan, verify_chain
-from app.models import VerifyRequest, VerifyResponse, RoutePoint, BatchInfo, PreviousScan, ScanHistory
+from app.database import (
+    init_db,
+    get_batch,
+    get_route,
+    get_scan_history,
+    get_scan_count,
+    record_scan,
+    verify_chain,
+    upsert_batch,
+    clear_route,
+    add_route_point,
+    list_batches,
+)
+from app.models import (
+    VerifyRequest,
+    VerifyResponse,
+    RoutePoint,
+    BatchInfo,
+    PreviousScan,
+    ScanHistory,
+    RegisterBatchRequest,
+    RegisterBatchResponse,
+    ListBatchesResponse,
+)
 
 VELOCITY_MAX_KMH = 120.0
 DENSITY_THRESHOLD = 2
@@ -119,7 +141,16 @@ async def verify(body: VerifyRequest):
         if batch_row:
             route_rows = await get_route(body.batch_id)
             route = [RoutePoint(location_name=r["location_name"], lat=r["lat"], lng=r["lng"], event=r["event"]) for r in route_rows]
-            batch_info = BatchInfo(batch_id=batch_row["batch_id"], region=batch_row["region"], mint_date=batch_row["mint_date"], route=route)
+            batch_info = BatchInfo(
+                batch_id=batch_row["batch_id"],
+                region=batch_row["region"],
+                mint_date=batch_row["mint_date"],
+                manufacturer=batch_row.get("manufacturer", ""),
+                drug_name=batch_row.get("drug_name", ""),
+                drug_use=batch_row.get("drug_use", ""),
+                expiry=batch_row.get("expiry", ""),
+                route=route,
+            )
 
         # --- Scan history ---
         history = await get_scan_history(body.serial)
@@ -208,6 +239,71 @@ async def chain_verify(serial: str = ""):
         return {"intact": True, "message": "No serial provided"}
     result = await verify_chain(serial)
     return result
+
+
+@app.post("/api/v1/register", response_model=RegisterBatchResponse)
+async def register_batch(body: RegisterBatchRequest):
+    """Register a new batch with its supply chain route.
+
+    Used by manufacturer/distributor partners to onboard their batches
+    into the AntiFake system. Idempotent: re-registering an existing
+    batch updates the metadata and route.
+    """
+    if not body.batch_id or not body.region or not body.mint_date:
+        return RegisterBatchResponse(
+            batch_id=body.batch_id,
+            inserted=False,
+            message="batch_id, region, and mint_date are required",
+        )
+    inserted = await upsert_batch(
+        batch_id=body.batch_id,
+        region=body.region,
+        mint_date=body.mint_date,
+        manufacturer=body.manufacturer,
+        drug_name=body.drug_name,
+        drug_use=body.drug_use,
+        expiry=body.expiry,
+    )
+    # Replace the route if any new points are provided
+    if body.route:
+        await clear_route(body.batch_id)
+        for i, p in enumerate(body.route, start=1):
+            await add_route_point(
+                batch_id=body.batch_id,
+                point_order=i,
+                location_name=p.location_name,
+                lat=p.lat,
+                lng=p.lng,
+                event=p.event,
+            )
+    msg = "Batch registered" if inserted else "Batch updated"
+    return RegisterBatchResponse(batch_id=body.batch_id, inserted=inserted, message=msg)
+
+
+@app.get("/api/v1/batches", response_model=ListBatchesResponse)
+async def list_all_batches():
+    """List all registered batches (for partner dashboards)."""
+    rows = await list_batches()
+    items: list[BatchInfo] = []
+    for r in rows:
+        route_rows = await get_route(r["batch_id"])
+        route = [
+            RoutePoint(location_name=p["location_name"], lat=p["lat"], lng=p["lng"], event=p["event"])
+            for p in route_rows
+        ]
+        items.append(
+            BatchInfo(
+                batch_id=r["batch_id"],
+                region=r["region"],
+                mint_date=r["mint_date"],
+                manufacturer=r.get("manufacturer", ""),
+                drug_name=r.get("drug_name", ""),
+                drug_use=r.get("drug_use", ""),
+                expiry=r.get("expiry", ""),
+                route=route,
+            )
+        )
+    return ListBatchesResponse(batches=items, total=len(items))
 
 
 web_dir = os.path.join(os.path.dirname(__file__), "..", "..", "web")

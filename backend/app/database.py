@@ -15,7 +15,11 @@ async def init_db():
         CREATE TABLE IF NOT EXISTS batches (
             batch_id TEXT PRIMARY KEY,
             region TEXT NOT NULL,
-            mint_date TEXT NOT NULL
+            mint_date TEXT NOT NULL,
+            manufacturer TEXT DEFAULT '',
+            drug_name TEXT DEFAULT '',
+            drug_use TEXT DEFAULT '',
+            expiry TEXT DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS route_points (
@@ -44,10 +48,19 @@ async def init_db():
         CREATE INDEX IF NOT EXISTS idx_scans_serial ON scans(serial);
         CREATE INDEX IF NOT EXISTS idx_route_points_batch ON route_points(batch_id);
     """)
-    try:
-        await db.execute("ALTER TABLE scans ADD COLUMN chain_hash TEXT DEFAULT ''")
-    except Exception:
-        pass
+    # Migrations for older DBs
+    migrations = [
+        "ALTER TABLE batches ADD COLUMN manufacturer TEXT DEFAULT ''",
+        "ALTER TABLE batches ADD COLUMN drug_name TEXT DEFAULT ''",
+        "ALTER TABLE batches ADD COLUMN drug_use TEXT DEFAULT ''",
+        "ALTER TABLE batches ADD COLUMN expiry TEXT DEFAULT ''",
+        "ALTER TABLE scans ADD COLUMN chain_hash TEXT DEFAULT ''",
+    ]
+    for sql in migrations:
+        try:
+            await db.execute(sql)
+        except Exception:
+            pass
     await db.commit()
     await db.close()
 
@@ -61,6 +74,70 @@ async def get_batch(batch_id: str) -> dict | None:
     if not row:
         return None
     return dict(row[0])
+
+
+async def upsert_batch(
+    batch_id: str,
+    region: str,
+    mint_date: str,
+    manufacturer: str = "",
+    drug_name: str = "",
+    drug_use: str = "",
+    expiry: str = "",
+) -> bool:
+    """Insert or update a batch. Returns True if a new row was inserted."""
+    db = await get_db()
+    existing = await db.execute_fetchall(
+        "SELECT batch_id FROM batches WHERE batch_id = ?", (batch_id,)
+    )
+    if existing:
+        await db.execute(
+            "UPDATE batches SET region=?, mint_date=?, manufacturer=?, drug_name=?, drug_use=?, expiry=? WHERE batch_id=?",
+            (region, mint_date, manufacturer, drug_name, drug_use, expiry, batch_id),
+        )
+        inserted = False
+    else:
+        await db.execute(
+            "INSERT INTO batches (batch_id, region, mint_date, manufacturer, drug_name, drug_use, expiry) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (batch_id, region, mint_date, manufacturer, drug_name, drug_use, expiry),
+        )
+        inserted = True
+    await db.commit()
+    await db.close()
+    return inserted
+
+
+async def clear_route(batch_id: str) -> None:
+    db = await get_db()
+    await db.execute("DELETE FROM route_points WHERE batch_id = ?", (batch_id,))
+    await db.commit()
+    await db.close()
+
+
+async def add_route_point(
+    batch_id: str,
+    point_order: int,
+    location_name: str,
+    lat: float,
+    lng: float,
+    event: str,
+) -> None:
+    db = await get_db()
+    await db.execute(
+        "INSERT INTO route_points (batch_id, point_order, location_name, lat, lng, event) VALUES (?, ?, ?, ?, ?, ?)",
+        (batch_id, point_order, location_name, lat, lng, event),
+    )
+    await db.commit()
+    await db.close()
+
+
+async def list_batches() -> list[dict]:
+    db = await get_db()
+    rows = await db.execute_fetchall(
+        "SELECT * FROM batches ORDER BY batch_id"
+    )
+    await db.close()
+    return [dict(r) for r in rows]
 
 
 async def get_route(batch_id: str) -> list[dict]:
