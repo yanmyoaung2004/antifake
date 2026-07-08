@@ -13,3 +13,5 @@ build/
 *.egg-info/
 *.db
 .firecrawl/
+cert.pem
+key.pem
