@@ -9,12 +9,14 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
-from app.crypto.anchor import generate_anchor, extract_noise, compare_anchors, compute_overlay
+from app.crypto.anchor import generate_anchor, compare_anchors, compute_overlay
+from app.crypto.preprocess import preprocess_photo
 from app.database import init_db, get_batch, get_route, get_scan_history, get_scan_count, record_scan, verify_chain
 from app.models import VerifyRequest, VerifyResponse, RoutePoint, BatchInfo, PreviousScan, ScanHistory
 
 VELOCITY_MAX_KMH = 120.0
 DENSITY_THRESHOLD = 2
+ANCHOR_SIZE_FALLBACK = 64
 
 REGION_BOUNDS = {
     "MYANMAR": {"min_lat": 10.0, "max_lat": 28.5, "min_lng": 92.0, "max_lng": 101.0},
@@ -91,12 +93,17 @@ async def verify(body: VerifyRequest):
             try:
                 raw = base64.b64decode(body.image_base64)
                 arr = np.frombuffer(raw, np.uint8)
-                img = cv2.imdecode(arr, cv2.IMREAD_GRAYSCALE)
+                img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
                 if img is not None and img.size > 0:
                     seed = f"{body.batch_id}:{body.serial}"
                     expected = generate_anchor(seed)
-                    actual = extract_noise(img)
+                    actual, pp_info = preprocess_photo(img, expected=expected)
+                    if actual is None:
+                        pp_info["reason"] = "no_qr_detected"
+                        gray_fallback = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img.ndim == 3 else img
+                        actual = cv2.resize(gray_fallback, (64, 64))
                     anchor_result = compare_anchors(expected, actual)
+                    anchor_result["preprocess"] = pp_info
                     metrics = anchor_result
                     if anchor_result["degraded"]:
                         heatmap = compute_overlay(actual, expected)
