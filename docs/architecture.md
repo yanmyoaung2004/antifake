@@ -6,9 +6,68 @@ AntiFake is a two-layer anti-counterfeit verification system for the APICTA comp
 
 **Layer 1 — Spatial-Temporal (works today):** Detects suspicious scan behavior using batch/serial from any existing barcode. No factory cooperation needed. Three checks: velocity (impossible travel speed), density (replay attack), GPS (geographic diversion).
 
-**Layer 2 — Crypto-Anchor CV (factory bonus):** Optional visual verification of a deterministic noise pattern printed on packaging. Uses OpenCV to detect microscopic print degradation from photocopying. Returns a heatmap overlay showing exactly where the counterfeit deviates.
+**Layer 2 — Crypto-Anchor CV (factory bonus):** Optional visual verification of a deterministic noise pattern printed on packaging. Detects microscopic print degradation from photocopying. The anchor is a 16×16 grid of unique grayscale values, each rendered as a 4×4 block (so the printed anchor is 64×64 total). This coarse structure survives mild camera blur but is destroyed by photocopying.
 
-**Stack:** Python/FastAPI + OpenCV + SQLite + Leaflet.js
+**Custom Hash Chain:** Every scan is cryptographically chained to the previous via SHA256. Tampering with any record breaks the chain. No nodes, no gas, no infrastructure — just SQLite + SHA256.
+
+**Stack:** Python/FastAPI + OpenCV + SQLite + Leaflet.js + PWA
+
+---
+
+## Two-Layer Design
+
+```
+                      ┌──────────────────────────────┐
+                      │   Phone (browser / PWA)      │
+                      │  - Manual batch/serial entry │
+                      │  - QR scan (HTTPS only)      │
+                      │  - Optional photo upload     │
+                      │  - Browser geolocation       │
+                      └──────────┬───────────────────┘
+                                 │  HTTPS POST /api/v1/verify
+                                 │  {batch_id, serial, image_base64?,
+                                 │   lat, lng, timestamp}
+                                 ▼
+                ┌────────────────────────────────────────┐
+                │  FastAPI (app/main.py)                 │
+                │                                        │
+                │  1. CV layer (if image provided)       │
+                │     ├─ preprocess_photo()              │
+                │     │   ├─ detect QR                    │
+                │     │   ├─ derive anchor position       │
+                │     │   └─ crop 64x64                  │
+                │     └─ compare_anchors()               │
+                │         ├─ block NCC                   │
+                │         ├─ edge sharpness ratio        │
+                │         ├─ histogram correlation       │
+                │         ├─ FFT correlation             │
+                │         └─ bleed ratio                 │
+                │                                        │
+                │  2. Spatial-temporal layer (always)    │
+                │     ├─ velocity (Haversine)            │
+                │     ├─ density (replay count)          │
+                │     └─ GPS region check                │
+                │                                        │
+                │  3. Hash chain                         │
+                │     └─ record_scan() appends SHA256    │
+                │        to chain                        │
+                │                                        │
+                │  4. Status determination               │
+                │     ├─ counterfeit (CV fail)           │
+                │     ├─ flagged (spatial alert)         │
+                │     └─ verified (all pass)             │
+                └──────────┬─────────────────────────────┘
+                           │
+                           ▼
+                ┌──────────────────────────┐
+                │  SQLite (antifake.db)    │
+                │  - batches               │
+                │  - route_points          │
+                │  - scans (with chain)    │
+                └──────────────────────────┘
+```
+
+The two layers are independent: the CV layer is best-effort and degrades gracefully on real phone photos. The spatial-temporal + hash chain layer is authoritative and works with just batch/serial (no image required).
 
 ---
 
@@ -16,160 +75,180 @@ AntiFake is a two-layer anti-counterfeit verification system for the APICTA comp
 
 | Layer | Tool | Purpose |
 |---|---|---|
-| Backend | FastAPI + Uvicorn | Async HTTP server, 3-check spatial-temporal engine |
-| CV (optional) | OpenCV + NumPy | Edge, histogram, pixel bleed, heatmap overlay |
-| Database | SQLite + aiosqlite | Batch registry, scan history, route points |
+| Backend | FastAPI + Uvicorn | Async HTTP server |
+| CV | OpenCV + NumPy | Anchor generation, comparison, heatmap, QR detection |
+| Preprocessing | cv2.QRCodeDetector | Detect printed QR for anchor localization |
+| Database | SQLite + aiosqlite | Batches, routes, scans (with hash chain) |
 | Map | Leaflet.js + OpenStreetMap | Supply chain route with numbered markers |
-| Mobile PWA | Service Worker + manifest.json | Installable on phone home screen |
+| PWA | Service Worker + manifest.json | Installable on phone home screen |
 | Camera (PWA) | file input + capture=environment | Phone camera via browser |
-| QR | jsQR | Browser-based QR decoding from video stream |
+| QR (PWA) | jsQR | Browser-based QR decoding (requires HTTPS) |
 | GPS | navigator.geolocation | Real phone location auto-detected |
-| HTTP | httpx (Python), axios (mobile) | API communication |
-| Testing | pytest, httpx | 16 unit + integration tests |
+| HTTP | httpx | API client + tests |
+| Cert | cryptography | Self-signed cert generation for HTTPS |
+| Testing | pytest + httpx | 32 unit + integration tests |
 | Benchmark | tools/benchmark.py | 100 samples, 100% accuracy |
-| Robustness | tools/robustness_test.py | 14 real-world condition tests |
+| Robustness | tools/robustness_test.py | 14 conditions on transformed anchors |
+| Photo | tools/photo_robustness.py | 13 simulated phone photo scenarios |
 | Labels | tools/printable_labels.py, qrcode | Printable demo stickers |
+| HTTPS | tools/generate_cert.py, run_https.py | Self-signed cert + HTTPS server wrapper |
+| Partner | tools/onboard_partner.py | Realistic batch import demo |
 
 ---
 
 ## Directory Structure
 
 ```
-version2/
-├── plan.md                              # Build plan and concept
-├── docs/
-│   ├── setup.md                         # Setup instructions
-│   ├── test.md                          # Testing guide
-│   ├── architecture-version1.md         # v1 architecture reference
-│   └── architecture-version2.md         # This file
+antifake/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py                      # FastAPI with POST /api/v1/verify + batch/velocity features
-│   │   ├── database.py                  # SQLite queries (get_batch, get_route, get_scan_history, record_scan)
-│   │   ├── models.py                    # Pydantic models (VerifyRequest, BatchInfo, ScanHistory, RoutePoint)
+│   │   ├── main.py                  # FastAPI: verify, chain, register, batches
+│   │   ├── database.py              # SQLite: get_batch, get_route, record_scan,
+│   │   │                            #   verify_chain, upsert_batch, add_route_point
+│   │   ├── models.py                # Pydantic models (verify, register, list, etc.)
+│   │   ├── tools_helpers.py         # Shared label generation (printable_labels)
 │   │   └── crypto/
-│   │       └── anchor.py                # Core CV logic (all functions)
+│   │       ├── anchor.py            # 16x16 block noise + comparison metrics
+│   │       └── preprocess.py        # QR detection + anchor extraction
 │   ├── seed/
-│   │   └── seed_data.py                 # Seeds 3 batches with supply chain routes
-│   ├── tests/
-│   │   ├── test_anchor.py               # 8 tests for CV logic + API
-│   │   ├── test_enhanced.py             # 4 tests for batch lookup + velocity + map data
-│   │   ├── test_samples.py              # 2 tests for pre-generated images
-│   │   └── test_verify.py               # 2 tests for API health + roundtrip
+│   │   └── seed_data.py             # 3 baseline batches with full metadata
+│   ├── tests/                       # 32 tests
+│   │   ├── test_anchor.py           # 8 tests: CV logic + endpoint
+│   │   ├── test_enhanced.py         # 4 tests: batch + velocity + map
+│   │   ├── test_https.py            # 2 tests: cert + HTTPS server
+│   │   ├── test_partner_api.py      # 6 tests: register, list, idempotency
+│   │   ├── test_preprocess.py       # 8 tests: QR detection, photo pipeline
+│   │   ├── test_samples.py          # 2 tests: pre-generated images
+│   │   └── test_verify.py           # 2 tests: health + roundtrip
 │   ├── tools/
-│   │   ├── generate_samples.py          # Creates genuine + tampered test PNGs
-│   │   └── printable_labels.py          # Creates sticker-ready demo labels
-│   ├── sample_images/                   # 6 pre-generated images for testing
-│   ├── demo_labels/                     # 2 printable label PNGs for physical demo
+│   │   ├── benchmark.py             # 100 samples, 100% accuracy
+│   │   ├── generate_cert.py         # Self-signed cert generator
+│   │   ├── generate_samples.py      # Test PNG generator
+│   │   ├── onboard_partner.py       # Realistic partner batch import
+│   │   ├── photo_robustness.py      # 13-condition phone photo test
+│   │   ├── printable_labels.py      # Demo sticker labels
+│   │   ├── robustness_test.py       # 14-condition transformed anchor test
+│   │   └── run_https.py             # HTTPS server wrapper
+│   ├── sample_images/               # 6 pre-generated test images
+│   ├── demo_labels/                 # 2 printable label PNGs
+│   ├── cert.pem, key.pem            # Self-signed cert (gitignored, generated)
+│   ├── antifake.db                  # SQLite (gitignored, auto-created)
 │   └── pyproject.toml
-└── mobile/
-    ├── App.tsx                          # Single-screen app: camera → scan → result
-    ├── app.json                         # Expo config with camera permissions
-    └── package.json
+├── web/
+│   ├── index.html                   # PWA web interface (single file, ~400 lines)
+│   ├── manifest.json                # PWA manifest
+│   └── sw.js                        # Service worker
+├── mobile/                          # Expo app (alternative, optional)
+│   ├── App.tsx
+│   ├── app.json
+│   └── package.json
+└── docs/
+    ├── setup.md                     # Setup + HTTPS + cert trust
+    ├── test.md                      # Testing guide (32 tests)
+    └── architecture.md              # This file
 ```
 
 ---
 
-## Data Flow
-
-### Single Scan (Verify)
+## Data Flow: Verify
 
 ```
-Phone Camera                      Backend
-    │                                │
-    │  Scan QR code                  │
-    │  Extract: batch_id|serial      │
-    │                                │
-    │  Take photo of Layer 2         │
-    │  (noise pattern area)          │
-    │                                │
-    │  POST /api/v1/verify           │
-    │  {batch_id, serial,            │
-    │   image_base64}                │
-    │ ───────────────────────────────>│
-    │                                │
-    │                                │  seed = f"{batch_id}:{serial}"
-    │                                │  expected = generate_anchor(seed)
-    │                                │  actual = extract_noise(photo)
-    │                                │
-    │                                │  compare_anchors(expected, actual):
-    │                                │    ├─ Edge sharpness ratio
-    │                                │    ├─ Histogram correlation
-    │                                │    └─ Pixel bleed ratio
-    │                                │
-    │                                │  if degraded:
-    │                                │    overlay = compute_overlay()
-    │                                │
-    │  <──────────────────────────────│
-    │  {status, confidence,          │
-    │   message, metrics,            │
-    │   overlay_base64?}             │
-    │                                │
-    │  Display:                       │
-    │  ✅ "AUTHENTIC" (green)         │
-    │  or 🚫 "COUNTERFEIT" (red)      │
-    │       + heatmap overlay        │
+Phone                              Backend
+  │                                  │
+  │  batch_id, serial,               │
+  │  image_base64?,                   │
+  │  lat, lng, timestamp              │
+  │ ────────────────────────────────>│
+  │                                  │
+  │                                  │  seed = f"{batch_id}:{serial}"
+  │                                  │  expected = generate_anchor(seed)
+  │                                  │      → 16x16 grid → 64x64 kron
+  │                                  │
+  │                                  │  if image:
+  │                                  │    actual, info = preprocess_photo(
+  │                                  │        img, expected)
+  │                                  │    ├─ detect_qr_corners
+  │                                  │    ├─ crop 64x64 at predicted position
+  │                                  │    └─ 9x9 NCC refinement
+  │                                  │    metrics = compare_anchors(...)
+  │                                  │      ├─ block NCC (16x16 downsampled)
+  │                                  │      ├─ edge sharpness ratio
+  │                                  │      ├─ histogram correlation
+  │                                  │      ├─ FFT correlation
+  │                                  │      └─ bleed ratio
+  │                                  │
+  │                                  │  # spatial-temporal (always)
+  │                                  │  history = get_scan_history(serial)
+  │                                  │  velocity = haversine(prev, curr) / hours
+  │                                  │  density = scan_count + 1 > threshold
+  │                                  │  gps = batch_region.contains(scan_lat, scan_lng)
+  │                                  │
+  │                                  │  # hash chain
+  │                                  │  prev_hash = last(chain for this serial)
+  │                                  │  chain_hash = sha256(serial|batch|lat|lng|
+  │                                  │                     timestamp|result|prev_hash)
+  │                                  │  INSERT INTO scans (..., chain_hash)
+  │                                  │
+  │  {status, confidence, message,   │
+  │   metrics, overlay_base64?,       │
+  │   batch_info, scan_history}      │
+  │ <────────────────────────────────│
 ```
 
 ---
 
 ## Core CV Logic
 
-### `generate_anchor(seed: str) -> np.ndarray`
+### Anchor Format
+
+The crypto-anchor is a deterministic 64×64 noise pattern with structure:
 
 ```
-seed = "BATCH-A:001"
-      → SHA256(seed)
-      → first 8 bytes as int
-      → numpy.random.default_rng(int)
-      → rng.integers(0, 256, (64, 64))
+16x16 grid of unique grayscale values
+  ↓ kron with 4x4 ones
+64x64 image, each value rendered as 4x4 block
 ```
 
-This is **deterministic** — the same seed always produces the exact same noise pattern. The backend can regenerate the expected pattern for any serial without storing images.
+Why 16x16 on 4x4 blocks (not pure 64x64 noise):
+- Pure 64x64 noise has Nyquist at 32 cycles. Mild camera blur (σ=0.8 in 600x400 label) attenuates that completely.
+- 16x16 unique values on 4x4 blocks: highest "frequency" is 8 cycles across the anchor, well below the blur cutoff. Survives mild blur, destroyed by photocopying.
 
-### `extract_noise(image_bgr: np.ndarray) -> np.ndarray`
+```python
+def generate_anchor(seed: str) -> np.ndarray:
+    digest = sha256(seed.encode()).digest()
+    rng = np.random.default_rng(int.from_bytes(digest[:8], "little"))
+    grid = rng.integers(0, 256, (16, 16), dtype=np.uint8)
+    return np.kron(grid, np.ones((4, 4), dtype=np.uint8))
+```
 
-- Converts to grayscale
-- If smaller than 64×64, resizes with `INTER_AREA` interpolation
-- Crops to top-left 64×64 region
+The same seed always produces the exact same pattern. The backend regenerates the expected pattern for any serial without storing images.
 
-### `compare_anchors(expected, actual) -> dict`
+### Comparison Metrics
 
-Three independent metrics:
-
-| Metric | Method | Threshold | Weight |
+| Metric | What it measures | Genuine | Photocopy |
 |---|---|---|---|
-| **Edge sharpness** | Compares gradient magnitude ratio between expected and actual | `> 1.3` → degraded | 40% |
-| **Histogram correlation** | `cv2.compareHist` with `HISTCMP_CORREL` on 32-bin histograms | `< 0.6` → degraded | 30% |
-| **Pixel bleed** | Mean of pixels where `|expected - actual| > 30` | `> 0.25` → degraded | 30% |
+| `block_ncc` | 16x16 downsampled NCC | High (0.9+) | High (block averages preserved) |
+| `edge_ratio` | Sobel gradient at block boundaries / expected | ~1.0 (sharp) | <0.7 (blurred) |
+| `hist_correlation` | 32-bin histogram match | Variable (random) | Variable |
+| `fft_correlation` | Log-magnitude FFT NCC | High | Lower |
+| `bleed_ratio` | Fraction of pixels with diff > 30 | Low | High |
 
-A sample is marked **degraded** if any metric exceeds its threshold.
+A sample is **degraded** (counterfeit) if:
+- `block_ncc < 0.30` (different seed or heavy damage), OR
+- `edge_ratio < 0.70` AND (`bleed > 0.35` OR `hist < 0.20`) (photocopy signature)
 
-Confidence formula:
-```
-confidence = 1.0
-  - 0.4 * max(0, edge_diff_ratio - 1.0)
-  - 0.3 * max(0, 1.0 - hist_correlation)
-  - 0.3 * bleed_ratio
-```
+Confidence is a weighted blend of normalized metrics.
 
-### `compute_overlay(actual, expected) -> np.ndarray`
+### Photo Preprocessing Pipeline
 
-- Pixel-wise absolute difference
-- Normalize to 0–255
-- Apply OpenCV `COLORMAP_JET` (blue → cyan → yellow → red)
-- Return as base64 PNG
+For real phone photos (vs raw 64x64 PNG), the pipeline is:
 
-This is the **"wow" visual** — the counterfeit box shows a red heatmap highlighting exactly where the print deviated.
+1. **QR detection** with `cv2.QRCodeDetector` → 4 ordered corners
+2. **Sub-pixel offset** from the QR's TL to the anchor's TL, computed from the template geometry (printed QR at 25 modules, 9.6 px each, with the detector returning outer module corners)
+3. **Geometric crop** at the predicted position, scaled by `photo_qr_width / 220.8` (detector's effective QR width in template)
+4. **9×9 NCC refinement** when the expected pattern is available (corrects the 1-2 px jitter of QR detection)
 
-### `simulate_photocopy(anchor, severity=0.3) -> np.ndarray`
-
-Simulates a photocopied counterfeit:
-- Gaussian blur (kernel 3×3, sigma 0.5) — softens edges
-- Adds random noise — degrades the pattern
-- Blends original with degraded at `severity` ratio
-
-Used for generating test images and printable counterfeit labels.
+If no QR is detected, the system returns `actual = None` and the verify endpoint falls back to `cv2.resize(gray, (64, 64))` (legacy top-left crop).
 
 ---
 
@@ -177,68 +256,80 @@ Used for generating test images and printable counterfeit labels.
 
 ### `POST /api/v1/verify`
 
-**Request:**
 ```json
 {
   "batch_id": "BATCH-A",
   "serial": "001",
-  "image_base64": "<base64-encoded PNG>"
+  "image_base64": "<base64 PNG, optional>",
+  "lat": 16.8661,
+  "lng": 96.1951,
+  "timestamp": "2026-07-09T10:00:00"
 }
 ```
 
-**Response (verified):**
+Response fields:
+
+| Field | Description |
+|---|---|
+| `status` | `verified` / `flagged` / `counterfeit` / `error` |
+| `confidence` | 0.0–1.0 from CV metrics |
+| `message` | Human-readable explanation |
+| `metrics` | Block NCC, edge ratio, hist, FFT, bleed (when image provided) |
+| `overlay_base64` | Heatmap PNG (only when counterfeit) |
+| `batch_info` | Manufacturer, drug, region, mint_date, expiry, route (if registered) |
+| `scan_history` | scan_count, velocity_alert, density_alert, gps_alert, chain_intact |
+
+### `POST /api/v1/register`
+
+Idempotent batch registration for partner onboarding:
+
 ```json
 {
-  "status": "verified",
-  "confidence": 1.0,
-  "message": "Anchor pattern matches. Authentic.",
-  "metrics": {
-    "degraded": false,
-    "edge_diff_ratio": 1.0,
-    "hist_correlation": 1.0,
-    "bleed_ratio": 0.0,
-    "confidence": 1.0
-  },
-  "overlay_base64": null
+  "batch_id": "MM-PARA-2026-07",
+  "region": "MYANMAR",
+  "mint_date": "2026-07-01",
+  "manufacturer": "PharmaCorp Myanmar Ltd.",
+  "drug_name": "Paracetamol 500mg",
+  "drug_use": "Fever & Pain Relief",
+  "expiry": "2028-06",
+  "route": [
+    {"location_name": "Factory", "lat": 16.8661, "lng": 96.1951, "event": "Manufactured"},
+    {"location_name": "Pharmacy", "lat": 21.9588, "lng": 96.0896, "event": "Delivered"}
+  ]
 }
 ```
 
-**Response (counterfeit):**
-```json
-{
-  "status": "counterfeit",
-  "confidence": 0.44,
-  "message": "Print quality deviation detected. Likely counterfeit.",
-  "metrics": {
-    "degraded": true,
-    "edge_diff_ratio": 1.031,
-    "hist_correlation": -0.202,
-    "bleed_ratio": 0.608,
-    "confidence": 0.44
-  },
-  "overlay_base64": "<base64-encoded heatmap PNG>"
-}
-```
+Returns `{batch_id, inserted, message}`. Re-registering an existing batch updates metadata and replaces the route.
+
+### `GET /api/v1/batches`
+
+Returns all registered batches with full metadata. Used by partner dashboards.
+
+### `GET /api/v1/chain/verify?serial=X`
+
+Returns the integrity status of the hash chain for a given serial. UI shows a green 🔗 badge if intact, red 🔓 if tampered.
 
 ### `GET /api/v1/health`
 
-```json
-{"status": "ok"}
-```
+Returns `{"status": "ok"}`.
 
 ---
 
 ## Database Schema (SQLite)
 
-The database is auto-created on server startup. Re-run `seed/seed_data.py` to populate it.
+The database is auto-created on server startup. Re-run `seed/seed_data.py` to populate.
 
 ### `batches` table
 
 | Column | Type | Description |
 |---|---|---|
 | `batch_id` | TEXT PK | e.g. "BATCH-A" |
-| `region` | TEXT | Distribution region, e.g. "MYANMAR" |
+| `region` | TEXT | Distribution region (MYANMAR, VIETNAM, THAILAND) |
 | `mint_date` | TEXT | ISO date of manufacture |
+| `manufacturer` | TEXT | (optional) |
+| `drug_name` | TEXT | (optional) |
+| `drug_use` | TEXT | (optional) |
+| `expiry` | TEXT | (optional) |
 
 ### `route_points` table
 
@@ -259,8 +350,10 @@ The database is auto-created on server startup. Re-run `seed/seed_data.py` to po
 | `serial` | TEXT | Product serial number |
 | `batch_id` | TEXT | Which batch it belongs to |
 | `lat`, `lng` | REAL | GPS at time of scan |
-| `timestamp` | TEXT | ISO timestamp of scan |
-| `result` | TEXT | "verified" or "counterfeit" |
+| `timestamp` | TEXT | ISO timestamp |
+| `result` | TEXT | "verified" / "flagged" / "counterfeit" |
+| `scanned_at` | TEXT | Default `datetime('now')` |
+| `chain_hash` | TEXT | SHA256 chain hash (see below) |
 
 ---
 
@@ -272,112 +365,91 @@ Every scan record is cryptographically chained using SHA256:
 chain_hash = SHA256(serial | batch_id | lat | lng | timestamp | result | prev_hash)
 ```
 
-- First scan: `prev_hash = "0" * 64` (all zeros)
-- Subsequent scans: `prev_hash` = chain_hash of the previous scan
+- First scan: `prev_hash = "0" * 64`
+- Subsequent scans: `prev_hash` = `chain_hash` of the previous scan for that serial
 - Verification: recompute every hash from start to end, compare with stored values
 
 If any record is modified, its hash changes, breaking all subsequent hashes. The chain becomes irreparably broken — instantly detectable via `GET /api/v1/chain/verify?serial=X`.
 
 This provides blockchain-level immutability with zero infrastructure — no nodes, no gas, no network. The web UI shows a green 🔗 badge for intact chains and a red 🔓 badge if the chain is broken.
 
-## Verification Flow
+---
 
-The `POST /api/v1/verify` endpoint runs checks in sequence:
+## Spatial-Temporal Checks
 
-### Layer 1 — Spatial-Temporal (always runs)
-
-1. **Velocity Check:** Computes Haversine distance between current and last scan GPS, divides by time delta. If speed > 120 km/h, returns velocity alert.
-2. **Density Check:** Counts scans per serial via SQLite. If count > 2 (configurable), returns density alert for possible code replay.
-3. **GPS Cross-Reference:** Compares scan location against batch distribution region polygon. If outside region, returns geographic diversion alert.
-
-### Layer 2 — Crypto-Anchor CV (if image provided)
-
-4. **Anchor Generation:** `SHA256(f"{batch_id}:{serial}")` → deterministic 64×64 noise pattern.
-5. **Photo Extraction:** Decoded image is grayscaled and cropped to 64×64 anchor area.
-6. **Comparison:** Three metrics against expected pattern:
-   - Edge sharpness ratio (gradient comparison)
-   - Histogram correlation (32-bin distribution match)
-   - Pixel bleed ratio (pixels above 30-diff threshold)
-7. **Heatmap:** If degraded, pixel-wise difference rendered as COLORMAP_JET overlay.
-
-### Status Determination
-
-- **counterfeit** — anchor check failed (CV layer)
-- **flagged** — spatial-temporal alert triggered (velocity, density, or GPS)
-- **verified** — all checks passed
-- **error** — unexpected exception
+### Velocity (Haversine)
 
 ```
-distance = haversine(prev_lat, prev_lng, curr_lat, curr_lng)  ← in km
-hours = (curr_timestamp - prev_timestamp)                      ← in hours
-speed = distance / hours                                        ← in km/h
+distance = haversine(prev_lat, prev_lng, curr_lat, curr_lng)  // in km
+hours = (curr_timestamp - prev_timestamp)                       // in hours
+speed = distance / hours                                        // in km/h
 ```
 
-If `speed > 120 km/h` (configurable), a velocity alert is returned. Example:
+If `speed > 120 km/h`, returns a velocity alert. Example:
 
 > ⚠ Impossible movement detected — 570 km in 30 min (1140 km/h). Previous scan was at (16.9, 96.2).
+
+### Density (Replay)
+
+Counts scans per serial. If `count + 1 > 2` (configurable), returns a density alert.
+
+### GPS Region
+
+Each batch has a distribution region (MYANMAR, VIETNAM, THAILAND). If the scan's coordinates fall outside the region's bounding box, returns a GPS alert.
+
+---
+
+## Status Determination
+
+| Status | Condition |
+|---|---|
+| `counterfeit` | CV layer failed (block NCC < 0.3 or photocopy signature) |
+| `flagged` | Spatial-temporal alert (velocity, density, or GPS) but CV passed |
+| `verified` | All checks passed |
+| `error` | Unexpected exception |
 
 ---
 
 ## Journey Map
 
-After verification, the web page renders an interactive Leaflet map showing:
+The web page renders an interactive Leaflet map showing:
 1. **Route line** — green dashed line from factory to pharmacy
-2. **Route markers** — numbered circles at each waypoint (blue = origin, yellow = transit, green = destination)
-3. **Tooltips** — hover/tap to see location name and event
-4. **Scan marker** — red dot at the current scan's GPS location
+2. **Route markers** — numbered circles (blue = origin, yellow = transit, green = destination)
+3. **Tooltips** — hover/tap for location name and event
+4. **Scan marker** — red dot at the current scan's GPS
 
-The map auto-zooms to fit all markers. The batch info section above the map shows the route as text: "Factory → Port → Distributor → Pharmacy".
+Map auto-zooms to fit all markers.
 
 ---
 
-## Mobile App Flow
+## HTTPS for Camera Access
 
+Browsers block `getUserMedia` (camera) on HTTP unless on `localhost`. The QR scanner requires HTTPS on a phone.
+
+**One-time setup:**
+```bash
+.venv\Scripts\python.exe tools/generate_cert.py
 ```
-┌──────────────────────────────────────┐
-│         Home Screen                  │
-│  "AntiFake" title                    │
-│  "Verify medicine authenticity..."   │
-│  [ Start Scan ] button               │
-└──────────────┬───────────────────────┘
-               │ tap
-               ▼
-┌──────────────────────────────────────┐
-│        Camera Screen                 │
-│  ┌──────────────────────────────┐    │
-│  │      Camera View             │    │
-│  │  Scanning for QR code...     │    │
-│  └──────────────────────────────┘    │
-│  "Point camera at the QR code"       │
-└──────────────┬───────────────────────┘
-               │ QR detected
-               ▼
-┌──────────────────────────────────────┐
-│   Loading — "Analyzing..." spinner   │
-│   (captures photo, sends to backend) │
-└──────────────┬───────────────────────┘
-               │ response received
-               ▼
-┌──────────────────────────────────────┐
-│         Result Screen                │
-│                                      │
-│  ✅ AUTHENTIC (green)               │
-│     or 🚫 COUNTERFEIT (red)          │
-│                                      │
-│  "Anchor pattern matches..."         │
-│  Confidence: 100%                    │
-│                                      │
-│  [Heatmap overlay if counterfeit]    │
-│                                      │
-│  [ Scan Another ] button             │
-└──────────────────────────────────────┘
+
+**Run with HTTPS:**
+```bash
+.venv\Scripts\python.exe tools/run_https.py
+# or
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 \
+  --ssl-keyfile key.pem --ssl-certfile cert.pem
 ```
+
+**Trust the cert on phone:**
+- iOS: Settings > General > About > Certificate Trust Settings
+- Android: Chrome > Site settings > secure connection
+
+See [setup.md](setup.md) for the full walkthrough.
 
 ---
 
 ## Demo Labels
 
-The `tools/printable_labels.py` script generates 600×400 PNGs ready for sticker paper:
+`tools/printable_labels.py` generates 600×400 PNGs ready for sticker paper:
 
 ```
 ┌──────────────────────────────────────┐
@@ -387,7 +459,8 @@ The `tools/printable_labels.py` script generates 600×400 PNGs ready for sticker
 │  │ Crypto   │    │   QR     │       │
 │  │ Anchor   │    │  Code    │       │
 │  │ (64×64)  │    │ (240×240)│       │
-│  │          │    │          │       │
+│  │ 16x16 on │    │ 25-mod   │       │
+│  │ 4x4 blk  │    │          │       │
 │  └──────────┘    └──────────┘       │
 │                                      │
 │  LAYER 2          LAYER 1            │
@@ -397,49 +470,29 @@ The `tools/printable_labels.py` script generates 600×400 PNGs ready for sticker
 └──────────────────────────────────────┘
 ```
 
-Print both labels, stick on two identical boxes. One scans as authentic, the other as counterfeit.
+Print both labels, stick on two identical boxes. The genuine label verifies; the counterfeit label (with photocopy simulation) flags.
 
 ---
 
-## Key Differences from v1
+## Partner Onboarding
 
-| Aspect | v1 | v2 |
-|---|---|---|
-| Scope | Full supply chain system | Anchor verification + batch tracing + velocity check |
-| Infrastructure | Redis, Docker, Hardhat, blockchain | SQLite (zero-config) |
-| Anomaly engine | Velocity, density, GPS with Redis | Velocity check via scan history in SQLite |
-| Blockchain | Merkle root minting, scan events | Not included |
-| Batch registry | Enterprise API | SQLite with seed data (3 batches, realistic routes) |
-| Supply chain map | Not included | Leaflet.js interactive map with route waypoints |
-| Offline support | AsyncStorage queue | Not included |
-| Enterprise API | Batch creation with API key | Not included |
-| Dependencies | 10+ services | Python + Node.js |
-| Test count | 19 backend + 6 contracts | 16 backend |
-| Setup time | ~1 hour | ~5 minutes |
+Manufacturers and distributors can register batches via the API:
+
+```bash
+.venv\Scripts\python.exe tools/onboard_partner.py
+```
+
+Imports 5 representative partner batches with realistic drug names, manufacturers, and geographically accurate supply chain points (Myanmar, Vietnam, Thailand).
+
+In production, the manufacturer's ERP would call `POST /api/v1/register` directly to register each batch as it's produced.
 
 ---
 
 ## Testing
 
-See [`test.md`](test.md) for full details.
+See [test.md](test.md) for the full guide.
 
-```bash
-cd version2/backend
-uv run pytest -v          # 16 tests in under 3 seconds
-
-# Test genuine (with batch info + velocity)
-python -c "import httpx,base64;b64=base64.b64encode(open('sample_images/genuine_BATCH-A_001.png','rb').read()).decode();r=httpx.post('http://localhost:8000/api/v1/verify',json={'batch_id':'BATCH-A','serial':'001','image_base64':b64,'lat':16.8661,'lng':96.1951,'timestamp':'2026-07-06T10:00:00'});print(r.json().get('status'),'| batch:',r.json().get('batch_info',{}).get('batch_id'))"
-
-# Test counterfeit
-python -c "import httpx,base64;b64=base64.b64encode(open('sample_images/tampered_BATCH-A_001.png','rb').read()).decode();r=httpx.post('http://localhost:8000/api/v1/verify',json={'batch_id':'BATCH-A','serial':'001','image_base64':b64,'lat':16.8661,'lng':96.1951,'timestamp':'2026-07-06T10:00:00'});print(r.json().get('status'))"
-
-# Velocity alert (scan same serial twice)
-python -c "
-import httpx,base64,sqlite3,os
-con=sqlite3.connect('antifake.db');con.execute('DELETE FROM scans');con.commit();con.close()
-b64=base64.b64encode(open('sample_images/genuine_BATCH-A_001.png','rb').read()).decode()
-for lat,lng,ts in [(16.8661,96.1951,'2026-07-06T10:00:00'),(21.9731,96.0836,'2026-07-06T10:30:00')]:
-    r=httpx.post('http://localhost:8000/api/v1/verify',json={'batch_id':'BATCH-A','serial':'V-TEST','image_base64':b64,'lat':lat,'lng':lng,'timestamp':ts})
-    d=r.json();print('Scan',d['scan_history']['scan_count'],': alert' if d['scan_history'].get('velocity_alert') else ': ok')
-"
-```
+- **32 unit + integration tests** (`pytest -v`)
+- **100-sample benchmark** (100% accuracy on synthetic anchors)
+- **14-condition robustness** on transformed 64x64 anchors
+- **13-condition photo robustness** on simulated phone photos
