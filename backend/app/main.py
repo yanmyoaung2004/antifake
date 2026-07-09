@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 
 from app.crypto.anchor import generate_anchor, compare_anchors, compute_overlay
 from app.crypto.preprocess import preprocess_photo
+from app.ml.classifier import predict_proba, is_available as ml_available
 from app.database import (
     init_db,
     get_batch,
@@ -34,6 +35,9 @@ from app.models import (
     RegisterBatchRequest,
     RegisterBatchResponse,
     ListBatchesResponse,
+    AIConfidence,
+    ExplainRequest,
+    ExplainResponse,
 )
 
 VELOCITY_MAX_KMH = 120.0
@@ -101,6 +105,32 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/api/v1/model/info")
+async def model_info():
+    """Whether the AI classifier is loaded and ready."""
+    from app.ml.classifier import model_path, load_error
+    return {
+        "ml_available": ml_available(),
+        "model_path": model_path(),
+        "load_error": load_error(),
+    }
+
+
+@app.post("/api/v1/explain", response_model=ExplainResponse)
+async def explain(body: ExplainRequest):
+    """Generate a natural-language explanation of a verification result."""
+    from app.ml.explainer import generate_explanation
+    result = generate_explanation(
+        verify=body.verify_response,
+        user_message=body.user_message,
+        conversation=body.conversation,
+    )
+    return ExplainResponse(
+        reply=result.get("reply", "No explanation available."),
+        suggestions=result.get("suggestions", []),
+    )
+
+
 @app.post("/api/v1/verify", response_model=VerifyResponse)
 async def verify(body: VerifyRequest):
     try:
@@ -109,6 +139,7 @@ async def verify(body: VerifyRequest):
         anchor_result = None
         overlay_b64 = None
         metrics = None
+        ai_conf = None
 
         # --- Optional: Crypto-anchor check ---
         if body.image_base64:
@@ -127,6 +158,36 @@ async def verify(body: VerifyRequest):
                     anchor_result = compare_anchors(expected, actual)
                     anchor_result["preprocess"] = pp_info
                     metrics = anchor_result
+
+                    # --- Optional: AI second opinion ---
+                    # Runs in parallel with the hand-tuned CV. If a trained
+                    # model is present (classifier.onnx), include its
+                    # confidence. The hand-tuned CV is the authoritative
+                    # signal; the CNN is additive.
+                    ai_conf = None
+                    if ml_available():
+                        try:
+                            proba = predict_proba(actual)
+                            if proba is not None:
+                                cv_says_fake = anchor_result["degraded"]
+                                ai_says_fake = proba["p_counterfeit"] > 0.5
+                                ai_conf = AIConfidence(
+                                    p_genuine=round(proba["p_genuine"], 4),
+                                    p_counterfeit=round(proba["p_counterfeit"], 4),
+                                    model=proba.get("model", "cnn"),
+                                    model_agrees_with_cv=(cv_says_fake == ai_says_fake),
+                                )
+                                # If the CNN strongly disagrees with the CV in the
+                                # "more counterfeit" direction, escalate to counterfeit
+                                if not cv_says_fake and ai_says_fake and proba["p_counterfeit"] > 0.85:
+                                    alerts.append("counterfeit")
+                                    if overlay_b64 is None:
+                                        heatmap = compute_overlay(actual, expected)
+                                        _, buf = cv2.imencode(".png", heatmap)
+                                        overlay_b64 = base64.b64encode(buf.tobytes()).decode()
+                        except Exception:
+                            pass
+
                     if anchor_result["degraded"]:
                         heatmap = compute_overlay(actual, expected)
                         _, buf = cv2.imencode(".png", heatmap)
@@ -225,6 +286,7 @@ async def verify(body: VerifyRequest):
             overlay_base64=overlay_b64,
             batch_info=batch_info,
             scan_history=scan_history,
+            ai_confidence=ai_conf,
         )
 
     except Exception as e:

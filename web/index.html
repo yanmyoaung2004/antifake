@@ -92,6 +92,13 @@ body{font-family:-apple-system,system-ui,sans-serif;background:#0b1120;color:#e2
 .ow .cap{color:#475569;font-size:11px;margin-top:4px}
 #map{height:220px;border-radius:12px;display:none;border:2px solid #1e293b;overflow:hidden}
 #map.show{display:block}
+.chat-msg{background:#1e293b;border-radius:10px;padding:10px;font-size:13px;line-height:1.5;color:#cbd5e1;white-space:pre-wrap}
+.chat-msg.user{background:#2563eb20;border:1px solid #2563eb40}
+.chat-msg .mute{color:#64748b;font-size:11px;display:block;margin-bottom:4px}
+.chat-msg code{background:#0b1120;color:#f472b6;padding:1px 5px;border-radius:4px;font-size:12px}
+#chatMessages .chat-msg+h3{color:#94a3b8;font-size:13px;margin:6px 0 4px;font-weight:600}
+.chip{border-radius:8px;padding:6px 12px;font-size:12px;border:1px solid #1e293b;cursor:pointer;transition:.2s;color:#94a3b8;background:transparent}
+.chip:hover{border-color:#3b82f6;color:#e2e8f0;background:rgba(59,130,246,.08)}
 .ft{text-align:center;padding:16px}
 .ft .b{font-size:11px;color:#334155}
 </style>
@@ -198,6 +205,21 @@ body{font-family:-apple-system,system-ui,sans-serif;background:#0b1120;color:#e2
   </div>
 
   <div id="map"></div>
+
+  <div class="card" id="chatWrap" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:14px;font-weight:600;color:#e2e8f0">💬 AI Pharmacist</div>
+      <button id="chatToggle" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:12px">−</button>
+    </div>
+    <div id="chatBody">
+      <div id="chatMessages" style="max-height:320px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px"></div>
+      <div id="chatSuggestions" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+      <div style="display:flex;gap:6px">
+        <input id="chatInput" type="text" placeholder="Ask a question..." style="flex:1;background:#0b1120;border:1px solid #1e293b;border-radius:10px;padding:10px;color:#e2e8f0;font-size:13px;outline:none">
+        <button id="chatSend" style="background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;border-radius:10px;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap">Ask</button>
+      </div>
+    </div>
+  </div>
 
   <div class="ft"><div class="b">AntiFake — APICTA 2026</div></div>
 </div>
@@ -383,10 +405,82 @@ function show(d,slat,slng){
       });
       if(slat&&slng)L.marker([slat,slng],{icon:L.divIcon({html:'<div style="background:#ef4444;width:12px;height:12px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(239,68,68,.5)"></div>',iconSize:[12,12],iconAnchor:[6,6]})}).addTo(map).bindTooltip('Your scan',{direction:'top'});
     },100);
-  }else{
-    BC.innerHTML='<div style="color:#94a3b8;font-size:12px">Batch "'+(bi?.batch_id||BI.value)+'" is not registered in the supply chain database.</div>';
-  }
+    }else{
+      BC.innerHTML='<div style="color:#94a3b8;font-size:12px">Batch "'+(bi?.batch_id||BI.value)+'" is not registered in the supply chain database.</div>';
+    }
 }
+
+// --- AI Pharmacist Chat ---
+const CW=$('chatWrap'),CM=$('chatMessages'),CS=$('chatSuggestions'),CI=$('chatInput'),CSE=$('chatSend'),CTO=$('chatToggle');
+let lastVerifyData=null,chatConv=[];
+
+function addMsg(text,role,html){
+  const d=document.createElement('div');
+  d.className='chat-msg'+(role==='user'?' user':'');
+  if(role==='system'){const m=document.createElement('span');m.className='mute';m.textContent='AI Pharmacist';d.appendChild(m)}
+  if(html)d.innerHTML=html;else d.textContent=text;
+  CM.appendChild(d);
+  CM.scrollTop=CM.scrollHeight;
+}
+
+function setSuggestions(ss){
+  CS.innerHTML='';
+  if(!ss||!ss.length){CS.style.display='none';return}
+  CS.style.display='flex';
+  ss.forEach(s=>{
+    const c=document.createElement('button');
+    c.className='chip';c.textContent=s;
+    c.onclick=()=>{CI.value=s;askChat()};
+    CS.appendChild(c);
+  });
+}
+
+function askChat(){
+  const q=CI.value.trim();if(!q)return;
+  CI.value='';
+  addMsg(q,'user');
+  chatConv.push({role:'user',content:q});
+  // Remove suggestions temporarily
+  CS.innerHTML='';CS.style.display='none';
+  // Send
+  fetch('/api/v1/explain',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({verify_response:lastVerifyData,user_message:q,conversation:chatConv})
+  }).then(r=>r.json()).then(d=>{
+    const reply=d.reply||'No explanation available.';
+    addMsg(reply,'system');
+    chatConv.push({role:'assistant',content:reply});
+    setSuggestions(d.suggestions||[]);
+  }).catch(()=>{addMsg('Sorry, I couldn\'t process that. Please try again.','system')});
+}
+
+CTO.onclick=()=>{
+  const body=$('chatBody');
+  if(body.style.display==='none'){body.style.display='block';CTO.textContent='−'}else{body.style.display='none';CTO.textContent='+'}
+};
+
+function initChat(data){
+  lastVerifyData=data;
+  CM.innerHTML='';
+  chatConv=[];
+  // Show chat panel
+  CW.style.display='block';$('chatBody').style.display='block';CTO.textContent='−';
+  // Request initial explanation
+  fetch('/api/v1/explain',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({verify_response:data,user_message:'',conversation:[]})
+  }).then(r=>r.json()).then(d=>{
+    addMsg(d.reply||'No explanation available.','system');
+    setSuggestions(d.suggestions||[]);
+  }).catch(()=>{});
+}
+
+// Wire into show() — call initChat after displaying the result
+const _origShow=show;
+show=function(d,slat,slng){
+  _origShow(d,slat,slng);
+  initChat(d);
+};
 </script>
 </body>
 </html>

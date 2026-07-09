@@ -45,6 +45,13 @@ class VerifyRequest(BaseModel):
     timestamp: str = ""
 
 
+class AIConfidence(BaseModel):
+    p_genuine: float
+    p_counterfeit: float
+    model: str
+    model_agrees_with_cv: bool | None = None
+
+
 class VerifyResponse(BaseModel):
     status: str
     confidence: float
@@ -53,6 +60,7 @@ class VerifyResponse(BaseModel):
     overlay_base64: str | None = None
     batch_info: BatchInfo | None = None
     scan_history: ScanHistory | None = None
+    ai_confidence: AIConfidence | None = None
 
 
 class RoutePointInput(BaseModel):
@@ -82,3 +90,14 @@ class RegisterBatchResponse(BaseModel):
 class ListBatchesResponse(BaseModel):
     batches: list[BatchInfo]
     total: int
+
+
+class ExplainRequest(BaseModel):
+    verify_response: dict
+    user_message: str = ""
+    conversation: list[dict] = []
+
+
+class ExplainResponse(BaseModel):
+    reply: str
+    suggestions: list[str]

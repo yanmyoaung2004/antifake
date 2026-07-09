@@ -10,6 +10,7 @@ dependencies = [
     "Pillow",
     "aiosqlite",
     "qrcode[pil]",
+    "onnxruntime",
 ]
 
 [project.optional-dependencies]
