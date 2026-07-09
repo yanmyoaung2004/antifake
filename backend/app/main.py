@@ -140,6 +140,7 @@ async def verify(body: VerifyRequest):
         overlay_b64 = None
         metrics = None
         ai_conf = None
+        ai_overrides_cv = False
 
         # --- Optional: Crypto-anchor check ---
         if body.image_base64:
@@ -165,30 +166,39 @@ async def verify(body: VerifyRequest):
                     # confidence. The hand-tuned CV is the authoritative
                     # signal; the CNN is additive.
                     ai_conf = None
+                    ai_overrides_cv = False
                     if ml_available():
                         try:
                             proba = predict_proba(actual)
                             if proba is not None:
                                 cv_says_fake = anchor_result["degraded"]
                                 ai_says_fake = proba["p_counterfeit"] > 0.5
+                                agrees = (cv_says_fake == ai_says_fake)
                                 ai_conf = AIConfidence(
                                     p_genuine=round(proba["p_genuine"], 4),
                                     p_counterfeit=round(proba["p_counterfeit"], 4),
                                     model=proba.get("model", "cnn"),
-                                    model_agrees_with_cv=(cv_says_fake == ai_says_fake),
+                                    model_agrees_with_cv=agrees,
                                 )
-                                # If the CNN strongly disagrees with the CV in the
-                                # "more counterfeit" direction, escalate to counterfeit
+                                # If the CNN strongly disagrees with the CV:
+                                #   - CV says genuine, CNN says counterfeit (>85%) → escalate
+                                #   - CV says counterfeit, CNN says genuine (>98%) → downgrade
                                 if not cv_says_fake and ai_says_fake and proba["p_counterfeit"] > 0.85:
                                     alerts.append("counterfeit")
                                     if overlay_b64 is None:
                                         heatmap = compute_overlay(actual, expected)
                                         _, buf = cv2.imencode(".png", heatmap)
                                         overlay_b64 = base64.b64encode(buf.tobytes()).decode()
+                                elif cv_says_fake and not ai_says_fake and proba["p_genuine"] > 0.98:
+                                    # CNN overrides the CV false positive
+                                    ai_overrides_cv = True
+                                    anchor_result["degraded"] = False
                         except Exception:
                             pass
 
-                    if anchor_result["degraded"]:
+                    cv_says_fake = anchor_result["degraded"]
+                    # If the CV says counterfeit AND the CNN did not override, append alert
+                    if cv_says_fake and not ai_overrides_cv:
                         heatmap = compute_overlay(actual, expected)
                         _, buf = cv2.imencode(".png", heatmap)
                         overlay_b64 = base64.b64encode(buf.tobytes()).decode()
@@ -253,6 +263,10 @@ async def verify(body: VerifyRequest):
             status = "counterfeit"
             message = "Crypto-anchor verification failed. Print quality deviation detected."
             confidence = anchor_result["confidence"] if anchor_result else 0.0
+        elif ai_overrides_cv:
+            status = "verified"
+            message = "CNN classifier overrode a false-positive CV alert. Product is likely authentic."
+            confidence = (ai_conf.p_genuine if ai_conf else 1.0) or 1.0
         elif alerts:
             status = "flagged"
             if "gps" in alerts:
