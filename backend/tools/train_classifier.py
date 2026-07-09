@@ -81,14 +81,49 @@ def random_photocopy(anchor: np.ndarray) -> np.ndarray:
     return simulate_photocopy(anchor, severity)
 
 
+def _random_translate(img: np.ndarray, max_px: int = 4) -> np.ndarray:
+    """Roll the image by a random offset (simulates 1-4px QR detection jitter)."""
+    dx = np.random.randint(-max_px, max_px + 1)
+    dy = np.random.randint(-max_px, max_px + 1)
+    return np.roll(np.roll(img, dx, axis=1), dy, axis=0)
+
+
+def _random_rotate(img: np.ndarray, max_deg: float = 8.0) -> np.ndarray:
+    """Rotate by a small random angle (simulates phone not being perfectly parallel)."""
+    import cv2
+    angle = float(np.random.uniform(-max_deg, max_deg))
+    h, w = img.shape
+    c = (w / 2, h / 2)
+    M = cv2.getRotationMatrix2D(c, angle, 1.0)
+    rotated = cv2.warpAffine(img, M, (w, h), borderMode=cv2.BORDER_REFLECT)
+    return rotated
+
+
 def random_augment(img: np.ndarray) -> np.ndarray:
     """
-    Random photo-like degradation: brightness, contrast, noise, blur.
+    Random photo-like degradation: brightness, contrast, noise, blur,
+    translation, rotation.
+
     Applied to BOTH genuine and counterfeit samples so the model learns
     to ignore these.
+
+    **Translation (shift):** Simulates 1-4 pixel QR detection jitter
+    that the geometric preprocessing pipeline cannot fully correct.
+    The model learns to recognize the pattern even when misaligned.
+
+    **Rotation:** Simulates a phone not perfectly parallel to the label.
     """
     import cv2
     aug = img.astype(np.float32)
+
+    # Random translation (critical: simulates the #1 failure mode)
+    if np.random.random() < 0.7:
+        aug = _random_translate(aug.astype(np.uint8), max_px=4).astype(np.float32)
+
+    # Random rotation (small angles, simulates hand-held phone)
+    if np.random.random() < 0.3:
+        aug = _random_rotate(aug.astype(np.uint8), max_deg=8.0).astype(np.float32)
+
     # Brightness
     if np.random.random() < 0.6:
         factor = float(np.random.uniform(0.6, 1.4))

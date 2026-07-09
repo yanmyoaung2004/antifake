@@ -29,6 +29,17 @@ purpose (blur σ ∈ [0.3, 1.5], noise σ ∈ [2, 20], brightness ∈ [0.6, 1.4]
 so the model learns the *photocopy signature* (loss of block edges +
 noise + histogram shift) rather than memorising specific transforms.
 
+**Translation augmentation (critical):** 70% of samples receive a
+random 1-4 pixel shift on both axes. This simulates the QR detection
+jitter that causes the geometric preprocessing pipeline to misalign
+the crop by 1-2 pixels. The model learns to recognize the block
+pattern even when shifted, which is the #1 failure mode on real
+phone photos.
+
+**Rotation augmentation:** 30% of samples receive a random ±8°
+rotation, simulating a phone camera held at a slight angle to the
+label.
+
 ---
 
 ## 2. Set up the training machine
