@@ -1,143 +1,320 @@
-# AntiFake v2 — Setup
+# AntiFake v2 — Setup Guide
 
 ## Prerequisites
 
-| Tool | Check |
-|---|---|
-| Python >= 3.12 | `python --version` |
-| Node.js >= 20 (only for Expo mobile, optional) | `node --version` |
+| Tool | Version | Check |
+|---|---|---|
+| Python | >= 3.12 | `python --version` |
+| pip | (included) | `python -m pip --version` |
 
 ---
 
-## Quick Start (HTTP, local-only)
+## Step 1: Create Virtual Environment
 
 ```bash
 cd backend
 
-# Create virtual environment
+# Create virtual environment (using uv, or python -m venv)
 uv venv .venv --python 3.12
+
+# Activate it
 .venv\Scripts\activate
-
-# Install dependencies
-uv pip install -e ".[dev]"
-
-# Seed the database with supply chain data
-.venv\Scripts\python.exe seed/seed_data.py
-
-# Start the server
-.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8765 --reload
 ```
-
-Open `http://127.0.0.1:8765`. **HTTP works for everything except the camera/QR scanner** (which requires HTTPS).
-
-> **Note on port 8000:** Windows reserves the 7997–8096 range for Hyper-V / WSL. If you see `WinError 10013` ("an attempt was made to access a socket in a way forbidden by its access permissions"), pick a port outside that range — `8765` works, or any port above 10000. The examples in this doc use **8765**; substitute your own port if you use a different one.
 
 ---
 
-## HTTPS (Required for Camera/QR Scanner)
+## Step 2: Install Dependencies
 
-Browsers block `getUserMedia` (camera access) on HTTP unless the page is on `localhost`. To scan QR codes with a phone camera, you need HTTPS.
+```bash
+uv pip install -e ".[dev]"
+```
 
-### One-time setup
+This installs:
+- **Runtime:** FastAPI, Uvicorn, OpenCV, NumPy, Pillow, aiosqlite, qrcode, onnxruntime
+- **Development:** pytest, pytest-asyncio, httpx, cryptography
+
+---
+
+## Step 3: Seed the Database
+
+```bash
+.venv\Scripts\python.exe seed/seed_data.py
+```
+
+Creates 3 batches with realistic supply chain routes:
+
+| Batch | Drug | Manufacturer | Region | Route |
+|---|---|---|---|---|
+| BATCH-A | Paracetamol 500mg | PharmaCorp Myanmar | MYANMAR | Yangon → Port → Mandalay Hub → Pharmacy |
+| BATCH-B | Amoxicillin 250mg | VinPharm | VIETNAM | Hanoi → Da Nang → HCMC → Pharmacy |
+| BATCH-C | Omeprazole 20mg | SiamPharm | THAILAND | Bangkok → Chiang Mai → Phuket |
+
+Re-run anytime to restore (skips existing batches).
+
+---
+
+## Step 4: Start the Server
+
+```powershell
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8765 --reload
+```
+
+Open **http://127.0.0.1:8765** in your browser.
+
+> **Port note:** Windows reserves 7997–8096 for Hyper-V. If you see `WinError 10013`, use `8765` or another port above 10000.
+
+---
+
+## Step 5: Verify It Works
+
+```powershell
+# Open the web UI and type:
+Batch ID: BATCH-A
+Serial:   001
+
+# Tap "Verify"
+```
+
+Expected result: green badge "AUTHENTIC", supply chain map with 4 markers, and the Verification Assistant chat panel auto-opens below.
+
+### Test with curl:
+
+```powershell
+.venv\Scripts\python.exe -c "import httpx; r = httpx.post('http://127.0.0.1:8765/api/v1/verify', json={'batch_id':'BATCH-A','serial':'001','lat':16.8661,'lng':96.1951}); print(r.json()['status'], r.json()['message'])"
+```
+
+Expected output: `verified No anomalies detected. Product is authentic.`
+
+---
+
+## Using the System
+
+### Without an Image (Recommended for Demo)
+
+Type any batch ID + serial into the text fields and tap **Verify**. The system checks three things:
+
+| Check | What it detects |
+|---|---|
+| **Velocity** | Same serial scanned in two cities too quickly → cloned |
+| **Density** | Same serial scanned too many times → code replay |
+| **GPS** | Medicine outside its distribution region → diversion |
+
+### With an Image (Crypto-Anchor Bonus)
+
+If the medicine box has a printed crypto-anchor (noise pattern), tap the camera area to upload a photo. The system adds two more checks:
+
+| Check | What it detects |
+|---|---|
+| **Hand-tuned CV** | Edge sharpness, block NCC, histogram, FFT, pixel bleed |
+| **CNN** (if model loaded) | ResNet-18 second opinion, overrides at 85%/98% thresholds |
+
+A failing anchor check shows a **heatmap overlay** highlighting where the print deviated.
+
+### QR Scanner (Requires HTTPS)
+
+Tap "Scan QR code" to use the phone camera. The QR encodes `batch_id|serial`. Requires HTTPS for camera access (see HTTPS section below).
+
+### Verification Assistant
+
+After any verification, the chat panel auto-opens with a full explanation. Tap suggestion chips or ask your own questions:
+
+- "What does edge sharpness mean?"
+- "How does the hash chain work?"
+- "What triggered the velocity alert?"
+- "Where did this batch come from?"
+
+---
+
+## HTTPS (For Camera / QR Scanner on Phone)
+
+Browsers block camera access on HTTP (except localhost). To scan QR codes from a phone:
+
+### One-time cert generation
 
 ```bash
 cd backend
 .venv\Scripts\python.exe tools/generate_cert.py
 ```
 
-This creates a self-signed `cert.pem` and `key.pem` (1-year validity) with SANs for `localhost`, `antifake.local`, `127.0.0.1`, and `0.0.0.0`.
+Creates `cert.pem` + `key.pem` (1-year, self-signed).
 
-### Run with HTTPS
-
-```bash
-.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8765 --ssl-keyfile key.pem --ssl-certfile cert.pem --reload
-```
-
-Or use the convenience script:
+### Start with HTTPS
 
 ```bash
 .venv\Scripts\python.exe tools/run_https.py
 ```
 
+Or manually:
+
+```bash
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8765 --ssl-keyfile key.pem --ssl-certfile cert.pem --reload
+```
+
 ### Trust the cert on your phone
 
-The browser will show a security warning because the cert is self-signed.
+Find your PC's local IP:
+
+```bash
+# Windows
+ipconfig | findstr IPv4
+
+# macOS / Linux
+ifconfig
+```
 
 **iOS:**
-1. Visit `https://<your-pc-ip>:8765` once
-2. When the warning appears, download the cert profile (Settings > General > VPN & Device Management)
+1. Visit `https://<your-pc-ip>:8765`
+2. Download the cert profile (Settings > General > VPN & Device Management)
 3. Trust it: **Settings > General > About > Certificate Trust Settings** — toggle ON for "AntiFake"
 
 **Android:**
 1. Visit `https://<your-pc-ip>:8765`
-2. Tap "Advanced" → "Proceed anyway" (Chrome) or "Install certificate" (system installer)
-
-**Find your PC's IP** (so the phone can reach the server):
-
-```bash
-# Windows
-ipconfig
-
-# macOS / Linux
-ifconfig
-# or
-ip addr
-```
-
-Look for the IPv4 address on your WiFi/Ethernet adapter (e.g., `192.168.1.100`).
+2. Tap "Advanced" → "Proceed anyway"
 
 ---
 
-## Web Interface
+## Optional: Deploy the CNN Classifier
 
-The PWA at `http://localhost:8765` (or `https://...` for HTTPS) is the primary interface. From a phone on the same WiFi:
+If you have `classifier.onnx` (trained on a GPU machine), place it in the `backend/` folder:
 
-- **No image needed**: just enter batch/serial, tap Verify
-- **Optional photo**: tap the camera area to take a photo of the crypto-anchor (requires HTTPS)
-- **Auto GPS**: the page uses browser geolocation; the manual fallback works on any browser
-- **QR scanner**: tap "Scan QR code" (requires HTTPS for camera)
+```bash
+# Copy the trained model
+cp /path/to/classifier.onnx backend/
 
-Add to home screen for native-app experience:
-- **Android**: Chrome menu → "Add to Home screen"
-- **iOS**: Safari share button → "Add to Home Screen"
+# Restart the server — it auto-detects the model
+```
 
-No personal data is collected or stored. Uploaded images are processed once and discarded.
+Verify it's loaded:
+
+```bash
+curl http://127.0.0.1:8765/api/v1/model/info
+```
+
+Expected:
+
+```json
+{"ml_available": true, "model_path": "backend/classifier.onnx", "load_error": null}
+```
+
+The CNN runs alongside the hand-tuned CV on every verify request. The response includes `ai_confidence`:
+
+```json
+{
+  "ai_confidence": {
+    "p_genuine": 0.998,
+    "p_counterfeit": 0.002,
+    "model": "resnet18",
+    "model_agrees_with_cv": true
+  }
+}
+```
 
 ---
 
-## Mobile App (Expo, optional)
+## Onboarding Partners
+
+Import realistic partner batches:
 
 ```bash
-cd mobile
-npm install
-npx expo start
+.venv\Scripts\python.exe tools/onboard_partner.py
 ```
 
-Scan the QR code with **Expo Go** on your phone.
+Registers 5 batches across Myanmar, Vietnam, and Thailand. To register a single batch via API:
 
-> **Note:** If Expo Go fails to connect, use `npx expo start --tunnel` or test with the web interface instead. The PWA is the recommended path.
+```bash
+curl -X POST http://127.0.0.1:8765/api/v1/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "batch_id": "MM-PARA-2026-07",
+    "region": "MYANMAR",
+    "mint_date": "2026-07-01",
+    "manufacturer": "PharmaCorp Myanmar Ltd.",
+    "drug_name": "Paracetamol 500mg",
+    "drug_use": "Fever & Pain Relief",
+    "expiry": "2028-06",
+    "route": [
+      {"location_name": "Factory", "lat": 16.8661, "lng": 96.1951, "event": "Manufactured"},
+      {"location_name": "Pharmacy", "lat": 21.9588, "lng": 96.0896, "event": "Delivered"}
+    ]
+  }'
+```
+
+List all registered batches:
+
+```bash
+curl http://127.0.0.1:8765/api/v1/batches
+```
 
 ---
 
 ## Printable Demo Labels
 
+Generate sticker-ready labels for the physical demo:
+
 ```bash
-cd backend
 .venv\Scripts\python.exe tools/printable_labels.py
 ```
 
-Output: `demo_labels/label_*.png` — print these on sticker paper and attach to medicine boxes for the physical demo.
+Output: `demo_labels/label_*.png`. Print on sticker paper and attach to medicine boxes. One label verifies as genuine, the other as counterfeit.
 
 ---
 
-## Supply Chain Data
+## Running Tests
 
-The seed data includes realistic pharmaceutical supply chain routes:
+```powershell
+# Unit tests (35 total)
+.venv\Scripts\python.exe -m pytest -v
 
-| Batch | Region | Route |
+# Accuracy benchmark (100 synthetic samples)
+.venv\Scripts\python.exe tools/benchmark.py
+
+# Robustness test (14 transformed anchors)
+.venv\Scripts\python.exe tools/robustness_test.py
+
+# Phone photo simulation (13 scenarios)
+.venv\Scripts\python.exe tools/photo_robustness.py
+```
+
+---
+
+## API Endpoints
+
+| Method | Path | Purpose |
 |---|---|---|
-| BATCH-A | Myanmar | Yangon Factory → Yangon Port → Mandalay Distributor → Mandalay Pharmacy |
-| BATCH-B | Vietnam | Hanoi Factory → Da Nang Hub → Ho Chi Minh Distributor → Saigon Pharmacy |
-| BATCH-C | Thailand | Bangkok Factory → Chiang Mai Distributor → Phuket Pharmacy |
+| GET | `/api/v1/health` | Health check |
+| POST | `/api/v1/verify` | Main verification |
+| POST | `/api/v1/assist` | Verification Assistant chat |
+| GET | `/api/v1/model/info` | CNN model availability |
+| GET | `/api/v1/chain/verify?serial=X` | Hash chain integrity |
+| POST | `/api/v1/register` | Register a new batch |
+| GET | `/api/v1/batches` | List all batches |
 
-Re-run `.venv\Scripts\python.exe seed/seed_data.py` anytime to re-seed (skips existing batches).
+---
+
+## Quick Reference
+
+```powershell
+# Start server (HTTP)
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8765 --reload
+
+# Start server (HTTPS)
+.venv\Scripts\python.exe tools/run_https.py
+
+# Run tests
+.venv\Scripts\python.exe -m pytest -v
+
+# Seed data
+.venv\Scripts\python.exe seed/seed_data.py
+
+# Onboard partners
+.venv\Scripts\python.exe tools/onboard_partner.py
+
+# Print labels
+.venv\Scripts\python.exe tools/printable_labels.py
+
+# Generate cert
+.venv\Scripts\python.exe tools/generate_cert.py
+
+# Benchmark
+.venv\Scripts\python.exe tools/benchmark.py
+```
