@@ -1,22 +1,17 @@
 import base64
-import os
+import asyncio
 
 import cv2
 import numpy as np
 from httpx import ASGITransport, AsyncClient
 import pytest
 
+from app.database import init_db
 from app.crypto.anchor import generate_anchor
 from app.main import app
-from app.database import init_db
 
-
-@pytest.fixture(autouse=True)
-async def setup_db():
-    if os.path.exists("antifake.db"):
-        os.remove("antifake.db")
-    await init_db()
-    yield
+# Initialize DB synchronously at module level (pytest strict mode workaround)
+asyncio.run(init_db())
 
 
 @pytest.mark.asyncio

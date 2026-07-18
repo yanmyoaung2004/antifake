@@ -1,7 +1,9 @@
 """Tests the enhanced verify endpoint with batch lookup, scan tracking, velocity."""
 
+import asyncio
 import base64
 import os
+import sys
 
 import cv2
 import numpy as np
@@ -13,6 +15,14 @@ from app.database import init_db
 from app.crypto.anchor import generate_anchor
 
 SAMPLES = os.path.join(os.path.dirname(__file__), "..", "sample_images")
+
+# Seed DB at module level
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+if os.path.exists("antifake.db"):
+    os.remove("antifake.db")
+asyncio.run(init_db())
+from seed.seed_data import seed
+asyncio.run(seed())
 
 
 def _b64(path: str) -> str:
@@ -26,32 +36,21 @@ def _make_anchor_b64(batch_id: str, serial: str) -> str:
     return base64.b64encode(buf.tobytes()).decode()
 
 
-@pytest.fixture(autouse=True)
-async def setup_db():
-    if os.path.exists("antifake.db"):
-        os.remove("antifake.db")
-    await init_db()
-    import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-    from seed.seed_data import seed
-    await seed()
-    yield
-
-
 @pytest.mark.asyncio
 async def test_verify_returns_batch_info():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post("/api/v1/verify", json={
             "batch_id": "BATCH-A",
-            "serial": "001",
-            "image_base64": _b64("genuine_BATCH-A_001.png"),
+            "serial": "ENH-VRFY-001",
+            "image_base64": _make_anchor_b64("BATCH-A", "ENH-VRFY-001"),
             "lat": 16.8661,
             "lng": 96.1951,
             "timestamp": "2026-07-06T10:00:00",
         })
     assert resp.status_code == 200
     data = resp.json()
+    import sys; print("DEBUG:", data.get("status"), data.get("metrics", {}).get("block_ncc"), file=sys.stderr)
     assert data["status"] == "verified"
     assert data["batch_info"] is not None
     assert data["batch_info"]["batch_id"] == "BATCH-A"
@@ -62,6 +61,8 @@ async def test_verify_returns_batch_info():
 
 @pytest.mark.asyncio
 async def test_second_scan_shows_velocity_alert():
+
+
     """Two scans of same serial from different cities 30 min apart -> velocity alert."""
     transport = ASGITransport(app=app)
     b64 = _make_anchor_b64("BATCH-A", "VELOCITY-001")
@@ -94,12 +95,12 @@ async def test_second_scan_shows_velocity_alert():
 @pytest.mark.asyncio
 async def test_unknown_batch_returns_no_batch_info():
     """Batch not in registry -> batch_info is None, anchor still verified."""
-    b64 = _make_anchor_b64("BATCH-UNKNOWN", "999")
+    b64 = _make_anchor_b64("BATCH-UNKNOWN", "ENH-UKN-999")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post("/api/v1/verify", json={
             "batch_id": "BATCH-UNKNOWN",
-            "serial": "999",
+            "serial": "ENH-UKN-999",
             "image_base64": b64,
             "lat": 0,
             "lng": 0,
@@ -112,14 +113,24 @@ async def test_unknown_batch_returns_no_batch_info():
 
 
 @pytest.mark.asyncio
+def _make_tampered_b64(batch_id: str, serial: str) -> str:
+    """Generate a tampered anchor and return as base64."""
+    from app.crypto.anchor import simulate_photocopy
+    anchor = generate_anchor(f"{batch_id}:{serial}")
+    tampered = simulate_photocopy(anchor, severity=0.35)
+    _, buf = cv2.imencode(".png", tampered)
+    return base64.b64encode(buf.tobytes()).decode()
+
+
+@pytest.mark.asyncio
 async def test_counterfeit_still_returns_batch_info():
     """Counterfeit detection preserves batch info."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post("/api/v1/verify", json={
             "batch_id": "BATCH-A",
-            "serial": "003",
-            "image_base64": _b64("tampered_BATCH-A_001.png"),
+            "serial": "ENH-FAKE-003",
+            "image_base64": _make_tampered_b64("BATCH-A", "ENH-FAKE-003"),
             "lat": 16.8661,
             "lng": 96.1951,
             "timestamp": "2026-07-06T10:00:00",

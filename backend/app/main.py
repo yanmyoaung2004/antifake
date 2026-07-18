@@ -36,8 +36,8 @@ from app.models import (
     RegisterBatchResponse,
     ListBatchesResponse,
     AIConfidence,
-    ExplainRequest,
-    ExplainResponse,
+    AssistRequest,
+    AssistResponse,
 )
 
 VELOCITY_MAX_KMH = 120.0
@@ -116,17 +116,17 @@ async def model_info():
     }
 
 
-@app.post("/api/v1/explain", response_model=ExplainResponse)
-async def explain(body: ExplainRequest):
-    """Generate a natural-language explanation of a verification result."""
-    from app.ml.explainer import generate_explanation
-    result = generate_explanation(
+@app.post("/api/v1/assist", response_model=AssistResponse)
+async def assist(body: AssistRequest):
+    """Generate a natural-language analysis of a verification result."""
+    from app.ml.assistant import generate_analysis
+    result = generate_analysis(
         verify=body.verify_response,
         user_message=body.user_message,
         conversation=body.conversation,
     )
-    return ExplainResponse(
-        reply=result.get("reply", "No explanation available."),
+    return AssistResponse(
+        reply=result.get("reply", "No analysis available."),
         suggestions=result.get("suggestions", []),
     )
 

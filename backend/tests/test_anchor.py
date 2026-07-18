@@ -11,8 +11,8 @@ from app.main import app
 from app.database import init_db
 
 
-@pytest.fixture(autouse=True)
-async def setup_db():
+@pytest.fixture(scope="module")
+async def db_setup():
     if os.path.exists("antifake.db"):
         os.remove("antifake.db")
     await init_db()
@@ -64,6 +64,7 @@ class TestVerifyEndpoint:
 
     @pytest.mark.asyncio
     async def test_valid_anchor_returns_verified(self):
+        await init_db()
         anchor = generate_anchor("BATCH-A:001")
         _, buf = cv2.imencode(".png", anchor)
         b64 = base64.b64encode(buf.tobytes()).decode()
@@ -79,6 +80,7 @@ class TestVerifyEndpoint:
 
     @pytest.mark.asyncio
     async def test_tampered_anchor_returns_counterfeit(self):
+        await init_db()
         anchor = generate_anchor("BATCH-A:001")
         rng = np.random.default_rng(99)
         noise = rng.integers(0, 100, (64, 64), dtype=np.uint8)

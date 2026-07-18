@@ -208,7 +208,7 @@ body{font-family:-apple-system,system-ui,sans-serif;background:#0b1120;color:#e2
 
   <div class="card" id="chatWrap" style="display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div style="font-size:14px;font-weight:600;color:#e2e8f0">💬 AI Pharmacist</div>
+      <div style="font-size:14px;font-weight:600;color:#e2e8f0">💬 Verification Assistant</div>
       <button id="chatToggle" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:12px">−</button>
     </div>
     <div id="chatBody">
@@ -410,14 +410,14 @@ function show(d,slat,slng){
     }
 }
 
-// --- AI Pharmacist Chat ---
+// --- Verification Assistant ---
 const CW=$('chatWrap'),CM=$('chatMessages'),CS=$('chatSuggestions'),CI=$('chatInput'),CSE=$('chatSend'),CTO=$('chatToggle');
 let lastVerifyData=null,chatConv=[];
 
 function addMsg(text,role,html){
   const d=document.createElement('div');
   d.className='chat-msg'+(role==='user'?' user':'');
-  if(role==='system'){const m=document.createElement('span');m.className='mute';m.textContent='AI Pharmacist';d.appendChild(m)}
+  if(role==='system'){const m=document.createElement('span');m.className='mute';m.textContent='Verification Assistant';d.appendChild(m)}
   if(html)d.innerHTML=html;else d.textContent=text;
   CM.appendChild(d);
   CM.scrollTop=CM.scrollHeight;
@@ -443,7 +443,7 @@ function askChat(){
   // Remove suggestions temporarily
   CS.innerHTML='';CS.style.display='none';
   // Send
-  fetch('/api/v1/explain',{
+  fetch('/api/v1/assist',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({verify_response:lastVerifyData,user_message:q,conversation:chatConv})
   }).then(r=>r.json()).then(d=>{
@@ -466,7 +466,7 @@ function initChat(data){
   // Show chat panel
   CW.style.display='block';$('chatBody').style.display='block';CTO.textContent='−';
   // Request initial explanation
-  fetch('/api/v1/explain',{
+  fetch('/api/v1/assist',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({verify_response:data,user_message:'',conversation:[]})
   }).then(r=>r.json()).then(d=>{

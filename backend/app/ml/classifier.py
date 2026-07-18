@@ -6,4 +6,6 @@ from app.ml import (  # noqa: F401
     model_path,
     load_error,
     predict_proba,
+    temperature_scale,
+    occlusion_sensitivity,
 )

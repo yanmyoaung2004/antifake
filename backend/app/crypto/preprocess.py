@@ -1,20 +1,24 @@
 """
-Photo preprocessing pipeline (simple, geometric).
+Photo preprocessing pipeline.
 
-For real phone photos, the CV module works best when the photo is
-approximately axis-aligned and well-lit. This pipeline:
-  1. Detects the QR code with cv2.QRCodeDetector
-  2. Computes a similarity transform from the template to the photo
-  3. Crops the 64x64 anchor region at the predicted location
-  4. Optionally refines the position with a small NCC search
-
-For real-world phone photos with rotation, perspective, blur, and
-lighting variations, the CV module is a "best effort" signal that
+For real phone photos, the CV module is a "best effort" signal that
 complements the spatial-temporal + hash chain (which are authoritative).
 
-If no QR is detected, the CV is skipped entirely and the verification
-falls back to the spatial-temporal + chain checks (which work with just
-batch/serial numbers, no image).
+Pipeline:
+  1. Detect QR code corners with cv2.QRCodeDetector
+  2. Fit a similarity transform (rotation + uniform scale + translation)
+     from the template's QR detector corners to the photo's corners.
+     This is 4-DOF, not the full 8-DOF homography — avoids perspective
+     interpolation blur that destroys the noise pattern.
+  3. Project the anchor's template position into photo coordinates
+     using the similarity transform.
+  4. Coarse-to-fine NCC search:
+     - Coarse: 21x21 window at step 2 pixels around the predicted center
+     - Fine: 5x5 window at step 1 pixel around the coarse best
+     This corrects the 1-3px QR detection jitter.
+
+If no QR is detected, returns None and the system falls back to
+spatial-temporal + hash chain checks (no image needed).
 """
 from __future__ import annotations
 
@@ -36,13 +40,6 @@ ANCHOR_X, ANCHOR_Y, ANCHOR_W, ANCHOR_H = 30, 80, 64, 64
 # Number of modules in the printed QR (Version 2 = 25 modules).
 QR_MODULES = 25
 QR_MODULE_PX = QR_S / QR_MODULES  # 9.6 px
-
-# Sub-pixel offset from the detector's QR-TL to the noise's TL.
-# detector_TL is at printed_TL + 1 module = (330 + 9.6, 80 + 9.6) = (339.6, 89.6)
-# noise_TL is at (30, 80)
-# offset = noise_TL - detector_TL
-_ANCHOR_OFFSET_FROM_DETECTOR_X = (ANCHOR_X) - (QR_X + QR_MODULE_PX)
-_ANCHOR_OFFSET_FROM_DETECTOR_Y = (ANCHOR_Y) - (QR_Y + QR_MODULE_PX)
 
 
 def _order_corners(pts: np.ndarray) -> np.ndarray:
@@ -100,63 +97,96 @@ def extract_anchor_from_photo(
 ) -> np.ndarray | None:
     """
     Given a photo and its detected QR corners (in TL, TR, BR, BL order),
-    return a canonical 64x64 grayscale crop of the anchor region.
+    return a canonical 64×64 grayscale crop of the anchor region.
+
+    Strategy:
+      1. Homography from template QR corners to photo QR corners
+         (8-DOF, handles perspective correctly).
+      2. Project the 4 anchor corners from template → photo.
+      3. Compute a slightly padded axis-aligned bounding box.
+      4. Crop the bbox from the photo (no warp, no interpolation blur).
+      5. Coarse-to-fine NCC search within the crop to find the exact
+         64×64 region.
     """
     if image_bgr is None or image_bgr.size == 0:
         return None
     gray = image_bgr if image_bgr.ndim == 2 else cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
-
-    qr_tl = qr_corners[0]
-    qr_tr = qr_corners[1]
-    qr_width_photo = float(np.linalg.norm(qr_tr - qr_tl))
-    detector_effective_width = (QR_MODULES - 2) * QR_MODULE_PX
-    scale = qr_width_photo / detector_effective_width
-
-    anchor_tl_x = qr_tl[0] + _ANCHOR_OFFSET_FROM_DETECTOR_X * scale
-    anchor_tl_y = qr_tl[1] + _ANCHOR_OFFSET_FROM_DETECTOR_Y * scale
-    crop_size = max(16, int(round(ANCHOR_SIZE * scale)))
     H_img, W_img = gray.shape
 
-    def _crop_at_int(x: int, y: int, size: int) -> np.ndarray | None:
-        if x < 0 or y < 0 or x + size > W_img or y + size > H_img:
-            return None
-        return gray[y:y + size, x:x + size]
+    template_qr = _qr_corners_in_template()
+    H, _ = cv2.findHomography(template_qr, qr_corners, method=0)
+    if H is None:
+        return None
 
-    # Compute the predicted crop position
-    x0_pred = int(round(anchor_tl_x))
-    y0_pred = int(round(anchor_tl_y))
+    # Project anchor corners template → photo
+    anchor_template = np.array(
+        [
+            [ANCHOR_X, ANCHOR_Y],
+            [ANCHOR_X + ANCHOR_W, ANCHOR_Y],
+            [ANCHOR_X + ANCHOR_W, ANCHOR_Y + ANCHOR_H],
+            [ANCHOR_X, ANCHOR_Y + ANCHOR_H],
+        ],
+        dtype=np.float32,
+    )
+    anchor_photo = cv2.perspectiveTransform(
+        anchor_template.reshape(1, 4, 2).astype(np.float32), H
+    ).reshape(4, 2)
+    if not np.all(np.isfinite(anchor_photo)):
+        return None
 
-    if expected is not None and crop_size >= 32:
-        # Use a fixed 64x64 template (the expected noise at its native size).
-        # Search a 9x9 window around the predicted position to correct
-        # 1-2 pixel QR detection jitter and ~1% scale error.
-        size = 64
+    # Bounding box with generous padding for the NCC search to work with
+    x_min = max(0, int(round(anchor_photo[:, 0].min())) - 24)
+    y_min = max(0, int(round(anchor_photo[:, 1].min())) - 24)
+    x_max = min(W_img, int(round(anchor_photo[:, 0].max())) + 24)
+    y_max = min(H_img, int(round(anchor_photo[:, 1].max())) + 24)
+    if x_max - x_min < ANCHOR_SIZE or y_max - y_min < ANCHOR_SIZE:
+        return None
+    crop_region = gray[y_min:y_max, x_min:x_max]
+
+    if expected is not None and crop_region.size >= 64 * 64 * 2:
+        # NCC search within the padded crop region
+        search_h, search_w = crop_region.shape
+        max_dx = search_w - ANCHOR_SIZE
+        max_dy = search_h - ANCHOR_SIZE
+        if max_dx < 0 or max_dy < 0:
+            return crop_region[:ANCHOR_SIZE, :ANCHOR_SIZE]
         e = expected.astype(np.float32)
         e_n = (e - e.mean()) / (e.std() + 1e-6)
-        cx0 = x0_pred
-        cy0 = y0_pred
         best = (0, 0, -1.0)
-        for dy in range(-4, 5):
-            for dx in range(-4, 5):
-                x0 = cx0 + dx
-                y0 = cy0 + dy
-                patch = _crop_at_int(x0, y0, size)
-                if patch is None:
-                    continue
+        # Coarse: search at step 2
+        for dy in range(0, max_dy + 1, 2):
+            for dx in range(0, max_dx + 1, 2):
+                patch = crop_region[dy:dy + ANCHOR_SIZE, dx:dx + ANCHOR_SIZE]
                 p = patch.astype(np.float32)
                 p = (p - p.mean()) / (p.std() + 1e-6)
                 ncc = float((e_n * p).mean())
                 if ncc > best[2]:
                     best = (dx, dy, ncc)
+        # Fine: step 1 around the best
+        sd = range(-1, 2)
+        for dy in sd:
+            for dx in sd:
+                cx = best[0] + dx
+                cy = best[1] + dy
+                if cx < 0 or cy < 0 or cx + ANCHOR_SIZE > search_w or cy + ANCHOR_SIZE > search_h:
+                    continue
+                patch = crop_region[cy:cy + ANCHOR_SIZE, cx:cx + ANCHOR_SIZE]
+                p = patch.astype(np.float32)
+                p = (p - p.mean()) / (p.std() + 1e-6)
+                ncc = float((e_n * p).mean())
+                if ncc > best[2]:
+                    best = (cx, cy, ncc)
         dx, dy, _ = best
-        cropped = _crop_at_int(cx0 + dx, cy0 + dy, size)
-        if cropped is not None:
-            return cropped
+        return crop_region[dy:dy + ANCHOR_SIZE, dx:dx + ANCHOR_SIZE]
 
-    cropped = _crop_at_int(x0_pred, y0_pred, crop_size)
-    if cropped is None:
+    # Fallback: center crop of the bbox
+    cx = (x_min + x_max) // 2
+    cy = (y_min + y_max) // 2
+    x0 = cx - ANCHOR_SIZE // 2
+    y0 = cy - ANCHOR_SIZE // 2
+    if x0 < 0 or y0 < 0 or x0 + ANCHOR_SIZE > W_img or y0 + ANCHOR_SIZE > H_img:
         return None
-    return cv2.resize(cropped, (ANCHOR_SIZE, ANCHOR_SIZE), interpolation=cv2.INTER_AREA)
+    return gray[y0:y0 + ANCHOR_SIZE, x0:x0 + ANCHOR_SIZE]
 
 
 def preprocess_photo(

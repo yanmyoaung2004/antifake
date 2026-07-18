@@ -34,7 +34,7 @@ def main():
 
         genuine_path = os.path.join(out_dir, f"genuine_{batch_id}_{serial}.png")
         cv2.imwrite(genuine_path, anchor)
-        print(f"  Generated: {genuine_path}")
+        print(f"  Generated: {genuine_path}  (seed={seed}, shape={anchor.shape})")
 
         tampered = simulate_photocopy(anchor, severity=0.35)
         tampered_path = os.path.join(out_dir, f"tampered_{batch_id}_{serial}.png")

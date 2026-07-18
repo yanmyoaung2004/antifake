@@ -92,12 +92,12 @@ class ListBatchesResponse(BaseModel):
     total: int
 
 
-class ExplainRequest(BaseModel):
+class AssistRequest(BaseModel):
     verify_response: dict
     user_message: str = ""
     conversation: list[dict] = []
 
 
-class ExplainResponse(BaseModel):
+class AssistResponse(BaseModel):
     reply: str
     suggestions: list[str]
