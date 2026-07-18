@@ -82,9 +82,8 @@ class TestVerifyEndpoint:
     async def test_tampered_anchor_returns_counterfeit(self):
         await init_db()
         anchor = generate_anchor("BATCH-A:001")
-        rng = np.random.default_rng(99)
-        noise = rng.integers(0, 100, (64, 64), dtype=np.uint8)
-        tampered = cv2.addWeighted(anchor, 0.5, noise, 0.5, 0)
+        from app.crypto.anchor import simulate_photocopy
+        tampered = simulate_photocopy(anchor, severity=0.35)
         _, buf = cv2.imencode(".png", tampered)
         b64 = base64.b64encode(buf.tobytes()).decode()
 
